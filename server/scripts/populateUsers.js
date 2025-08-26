@@ -1,10 +1,14 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
-const bcrypt = require('bcryptjs');
+const axios = require('axios');
 const { connectDB, closeDB } = require('../config/database');
 // Import User model
 const User = require('../models/User');
+
+// Configuration
+const BASE_URL = process.env.SERVER_URL || 'https://mastermind-numbers.onrender.com';
+const API_BASE_URL = `${BASE_URL}/api`;
 
 // Define available skins with their requirements
 const availableSkins = [
@@ -254,55 +258,140 @@ sampleUsers.forEach(user => {
   user.availableSkins = getSkinsForUser(user.gameStats.level, user.gameStats.rank);
 });
 
+// Function to register a user through the API
+async function registerUser(userData) {
+  try {
+    console.log(`Registering user: ${userData.username}...`);
+    
+    const response = await axios.post(`${API_BASE_URL}/auth/register`, {
+      username: userData.username,
+      email: userData.email,
+      password: userData.password
+    }, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (response.status === 200 && response.data.success) {
+      console.log(`✅ Successfully registered: ${userData.username}`);
+      return response.data.data.user;
+    } else {
+      console.log(`❌ Failed to register ${userData.username}: ${response.data.message}`);
+      return null;
+    }
+  } catch (error) {
+    if (error.response && error.response.status === 400) {
+      console.log(`⚠️  User ${userData.username} might already exist: ${error.response.data.message}`);
+      return null;
+    } else if (error.response && error.response.status === 429) {
+      console.log(`⏰ Rate limit hit for ${userData.username}, waiting longer...`);
+      // Wait longer for rate limit
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+      return null;
+    } else {
+      console.log(`❌ Error registering ${userData.username}: ${error.message}`);
+      if (error.response) {
+        console.log(`Response status: ${error.response.status}`);
+        console.log(`Response data: ${JSON.stringify(error.response.data, null, 2)}`);
+      }
+      return null;
+    }
+  }
+}
+
 async function populateUsers() {
   try {
     // Connect to MongoDB
     await connectDB();
     console.log('Connected to MongoDB');
 
-    // Clear existing users (optional - comment out if you want to keep existing users)
-    // await User.deleteMany({});
-    // console.log('Cleared existing users');
+    // Delete all existing users
+    console.log('🗑️  Deleting all existing users...');
+    const deleteResult = await User.deleteMany({});
+    console.log(`Deleted ${deleteResult.deletedCount} existing users`);
 
-    // Hash passwords and create users
+    // Register users through the API with smart rate limit handling
+    console.log('\n🚀 Starting user registration through API...');
+    console.log('⚠️  Note: Server has rate limiting (5 requests per 15 minutes)');
+    console.log('⏰ This script will take approximately 45+ minutes to complete');
+    console.log('💡 Consider running this during off-peak hours');
+    
     const createdUsers = [];
-    for (const userData of sampleUsers) {
-      // Check if user already exists
-      const existingUser = await User.findOne({ email: userData.email });
-      if (existingUser) {
-        console.log(`User ${userData.username} already exists, Updating...`);
-        await User.updateOne({ email: userData.email }, { $set: {
-          isVerified: true,
-          createdAt: new Date(),
-          gameStats: userData.gameStats,
-          availableSkins: userData.availableSkins,
-          coins: userData.coins,
-          email: userData.email,
-          username: userData.username,
-          lastLogin: new Date()
-        }});
-        continue;
+    const totalUsers = sampleUsers.length;
+    
+    for (let i = 0; i < totalUsers; i++) {
+      const userData = sampleUsers[i];
+      console.log(`\n📝 Processing user ${i + 1}/${totalUsers}: ${userData.username}`);
+      
+      // Register user through API with retry logic
+      let registeredUser = null;
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (!registeredUser && retryCount < maxRetries) {
+        try {
+          if (retryCount > 0) {
+            console.log(`🔄 Retry attempt ${retryCount} for ${userData.username}...`);
+            // Wait longer between retries
+            await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds
+          }
+          
+          registeredUser = await registerUser(userData);
+          
+          if (registeredUser) {
+            // Update the user directly in the database with game stats and skins
+            const updatedUser = await User.findByIdAndUpdate(
+              registeredUser.id,
+              {
+                gameStats: userData.gameStats,
+                availableSkins: userData.availableSkins,
+                coins: userData.coins,
+                isVerified: true,
+                lastLogin: new Date()
+              },
+              { new: true, runValidators: true }
+            );
+            
+            if (updatedUser) {
+              createdUsers.push({
+                ...updatedUser.toObject(),
+                gameStats: userData.gameStats,
+                availableSkins: userData.availableSkins,
+                coins: userData.coins
+              });
+              console.log(`✅ User ${userData.username} fully configured (Level ${userData.gameStats.level}, Rating ${userData.gameStats.rating}, Coins: ${userData.coins}, Skins: ${userData.availableSkins.length})`);
+            }
+            break; // Success, exit retry loop
+          }
+          
+        } catch (error) {
+          console.log(`❌ Unexpected error: ${error.message}`);
+        }
+        
+        retryCount++;
+        
+        if (!registeredUser && retryCount < maxRetries) {
+          console.log(`⏳ Waiting before retry...`);
+          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+        }
       }
-
-      // Hash password
-      const saltRounds = 10;
-      const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
-
-      // Create user with hashed password
-      const user = new User({
-        ...userData,
-        password: hashedPassword,
-        isVerified: true, // Mark as verified for testing
-        createdAt: new Date(),
-        lastLogin: new Date()
-      });
-
-      const savedUser = await user.save();
-      createdUsers.push(savedUser);
-      console.log(`Created user: ${savedUser.username} (Level ${savedUser.gameStats.level}, Rating ${savedUser.gameStats.rating}, Coins: ${savedUser.coins}, Skins: ${savedUser.availableSkins.length})`);
+      
+      if (!registeredUser) {
+        console.log(`❌ Failed to register ${userData.username} after ${maxRetries} attempts`);
+      }
+      
+      // Add delay between registrations to respect rate limits
+      if (i < totalUsers - 1) { // Don't wait after the last user
+        const delay = 180000; // 3 minutes (allows 5 requests per 15 minutes)
+        console.log(`⏳ Waiting ${delay / 1000 / 60} minutes before next registration...`);
+        console.log(`📊 Progress: ${i + 1}/${totalUsers} users completed (${Math.round(((i + 1) / totalUsers) * 100)}%)`);
+        console.log(`⏰ Estimated time remaining: ${Math.round((totalUsers - i - 1) * 3)} minutes`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
 
-    console.log(`\n✅ Successfully created ${createdUsers.length} users!`);
+    console.log(`\n✅ Successfully created and configured ${createdUsers.length} users!`);
     
     // Display summary
     console.log('\n📊 User Statistics Summary:');

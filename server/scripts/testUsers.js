@@ -1,5 +1,8 @@
-const mongoose = require('mongoose');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
+
+const { connectDB, closeDB } = require('../config/database');
+
 
 // Import User model
 const User = require('../models/User');
@@ -7,10 +10,7 @@ const User = require('../models/User');
 async function testUsers() {
   try {
     // Connect to MongoDB
-    await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await connectDB();
     console.log('✅ Connected to MongoDB');
 
     // Get all users
@@ -90,7 +90,7 @@ async function testUsers() {
     console.error('❌ Error testing users:', error);
   } finally {
     // Close connection
-    await mongoose.connection.close();
+    await closeDB();
     console.log('\n🔌 MongoDB connection closed');
   }
 }

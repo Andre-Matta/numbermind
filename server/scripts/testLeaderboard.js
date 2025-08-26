@@ -1,5 +1,7 @@
-const mongoose = require('mongoose');
-require('dotenv').config({ path: require('path').join(__dirname, '../../.env') });
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
+
+const { connectDB, closeDB } = require('../config/database');
 
 // Import User model
 const User = require('../models/User');
@@ -7,10 +9,7 @@ const User = require('../models/User');
 async function testLeaderboard() {
   try {
     // Connect to MongoDB
-    await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await connectDB();
     console.log('✅ Connected to MongoDB');
 
     // Check if users exist
@@ -116,7 +115,7 @@ async function testLeaderboard() {
     console.error('❌ Error testing leaderboard:', error);
   } finally {
     // Close connection
-    await mongoose.connection.close();
+    await closeDB();
     console.log('\n🔌 MongoDB connection closed');
   }
 }

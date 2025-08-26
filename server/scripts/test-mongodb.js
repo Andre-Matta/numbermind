@@ -1,6 +1,7 @@
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../../.env') });
-const mongoose = require('mongoose');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
+
+const { connectDB, closeDB } = require('../config/database');
 
 async function testConnection() {
   try {
@@ -11,12 +12,7 @@ async function testConnection() {
       throw new Error('MONGODB_URI is not defined in environment variables');
     }
     
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-      bufferCommands: false,
-    });
+    const conn = await connectDB();
     
     console.log('✅ MongoDB Connected Successfully!');
     console.log('📍 Host:', conn.connection.host);
@@ -63,6 +59,9 @@ async function testConnection() {
       console.log('   - MONGODB_URI is set in env.env file');
       console.log('   - File path is correct');
     }
+  } finally {
+    await closeDB();
+    console.log('\n🔌 MongoDB connection closed');
   }
 }
 

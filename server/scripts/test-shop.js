@@ -1,8 +1,8 @@
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../../.env') });
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const ShopItem = require('../models/Shop');
-const { connectDB } = require('../config/database');
+const { connectDB, closeDB } = require('../config/database');
 
 async function testShop() {
   try {
@@ -36,6 +36,9 @@ async function testShop() {
   } catch (error) {
     console.error('❌ Shop test failed:', error);
     process.exit(1);
+  } finally {
+    await closeDB();
+    console.log('\n🔌 MongoDB connection closed');
   }
 }
 

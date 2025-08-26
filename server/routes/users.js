@@ -54,7 +54,19 @@ router.put('/profile', [
   body('settings')
     .optional()
     .isObject()
-    .withMessage('Settings must be an object')
+    .withMessage('Settings must be an object'),
+  body('gameStats')
+    .optional()
+    .isObject()
+    .withMessage('Game stats must be an object'),
+  body('availableSkins')
+    .optional()
+    .isArray()
+    .withMessage('Available skins must be an array'),
+  body('coins')
+    .optional()
+    .isNumeric()
+    .withMessage('Coins must be a number')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -65,7 +77,7 @@ router.put('/profile', [
       });
     }
 
-    const { username, avatar, settings } = req.body;
+    const { username, avatar, settings, gameStats, availableSkins, coins } = req.body;
     const updateData = {};
 
     // Check if username is being changed and if it's available
@@ -82,6 +94,9 @@ router.put('/profile', [
 
     if (avatar) updateData.avatar = avatar;
     if (settings) updateData.settings = settings;
+    if (gameStats) updateData.gameStats = gameStats;
+    if (availableSkins) updateData.availableSkins = availableSkins;
+    if (coins !== undefined) updateData.coins = coins;
 
     const user = await User.findByIdAndUpdate(
       req.user.id,
