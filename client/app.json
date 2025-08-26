@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "NumberMind",
+    "slug": "numbermind",
+    "version": "1.0.1",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a1a2e"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1a1a2e"
+      },
+      "permissions": [
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.ACCESS_WIFI_STATE"
+      ],
+      "package": "com.numbermind.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "owner": "andyadel11",
+    "extra": {
+      "eas": {
+        "projectId": "2b988a28-1aa3-4f28-94f3-b7647a7c4a32"
+      }
+    }
+  }
+}
