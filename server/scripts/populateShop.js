@@ -1,22 +1,9 @@
-/**
- * Populate Shop Script with Base64 Image Support
- * 
- * This script populates the shop database with theme items that support:
- * - imageUrl: External image URLs (fallback)
- * - imageData: Base64 encoded images (primary)
- * - imageAsset: Local asset references
- * 
- * Features:
- * - Automatically converts image files to Base64
- * - Creates themes directory structure
- * - Provides sample Base64 images for testing
- * - Supports multiple image formats (PNG, JPG, GIF)
- */
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const { connectDB, closeDB } = require('../config/database');
 const ShopItem = require('../models/Shop');
 const fs = require('fs');
-const path = require('path');
 
 // Utility function to convert image files to Base64
 function imageToBase64(imagePath) {
