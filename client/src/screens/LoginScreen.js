@@ -128,7 +128,7 @@ export default function LoginScreen({ onBack }) {
             <Text style={styles.subtitle}>
               {isLogin 
                 ? 'Sign in to continue your journey' 
-                : 'Join the Mastermind community'
+                : 'Join the NumberMind community'
               }
             </Text>
           </View>

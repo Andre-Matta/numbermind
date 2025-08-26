@@ -71,7 +71,7 @@ const sampleUsers = [
     }
   },
   {
-    username: 'MasterMind_Pro',
+    username: 'NumberMind_Pro',
     email: 'pro@numbermind.com',
     password: 'password123',
     coins: 5000,
