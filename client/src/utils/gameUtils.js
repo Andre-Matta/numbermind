@@ -25,9 +25,9 @@ export const calculateFeedback = (guess, secretNumber, mode) => {
     }
   }
 
-  // In hard mode, only show total correct
+  // In hard mode, only show total correct to user, but keep exact for win checking
   if (mode === 'hard') {
-    return { exact: 0, misplaced: 0, outOfPlace: 0, totalCorrect };
+    return { exact, misplaced: 0, outOfPlace: 0, totalCorrect };
   }
 
   // In standard mode, show exact, misplaced, and out of place
