@@ -367,7 +367,7 @@ const setupSocketIO = (server) => {
         
         // Store the player's secret number
         if (!game.playerNumbers) {
-          game.playerNumbers = {};
+          game.playerNumbers = new Map();
         }
         
         // Check if player has already submitted a number
@@ -376,13 +376,14 @@ const setupSocketIO = (server) => {
           return callback({ success: false, error: 'You have already submitted a number' });
         }
         
+        // Use proper Mongoose Map syntax
         game.playerNumbers.set(socket.userId, playerNumber);
         console.log(`✅ Added number for player ${socket.user.username}: ${playerNumber}`);
 
         console.log(`🔢 Player ${socket.user.username} submitted number in room ${roomId}`);
         console.log(`📊 Current playerNumbers:`, game.playerNumbers);
         
-        // Fix: Use proper Map methods for Mongoose Map objects
+        // Use proper Map methods for Mongoose Map objects
         const actualPlayerNumbersCount = game.playerNumbers.size || 0;
         console.log(`👥 Total players: ${game.players.length}, Numbers submitted: ${actualPlayerNumbersCount}`);
         console.log(`🔍 Player IDs in game:`, game.players);

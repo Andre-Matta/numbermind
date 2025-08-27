@@ -32,6 +32,7 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
   const [gameResult, setGameResult] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittingNumber, setIsSubmittingNumber] = useState(false);
+  const [hasSubmittedNumber, setHasSubmittedNumber] = useState(false);
   const [selectedSkin, setSelectedSkin] = useState('default');
   const [showSkinSelector, setShowSkinSelector] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
@@ -70,6 +71,13 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
         clearTimeout(typingTimeoutRef.current);
       }
       backHandler.remove();
+      // Clean up NetworkService event handlers
+      NetworkService.onGameStart = null;
+      NetworkService.onGuessReceived = null;
+      NetworkService.onGameEnd = null;
+      NetworkService.onPlayerJoined = null;
+      NetworkService.onPlayerLeft = null;
+      NetworkService.onDisconnect = null;
     };
   }, [onBack]);
 
@@ -84,82 +92,166 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
   };
 
   const setupGame = () => {
+    console.log('🔧 Setting up multiplayer game...');
+    console.log('🔍 Current NetworkService state:', {
+      isConnected: NetworkService.isConnected(),
+      roomId: NetworkService.roomId,
+      playerId: NetworkService.playerId
+    });
+    
     // Set up game event listeners
     NetworkService.onGameStart = handleGameUpdate;
     NetworkService.onGuessReceived = handleOpponentGuess;
     NetworkService.onGameEnd = handleGameEnd;
     NetworkService.onPlayerJoined = handlePlayerJoined;
     NetworkService.onPlayerLeft = handlePlayerLeft;
+    NetworkService.onDisconnect = handleDisconnection;
+    
+    console.log('✅ Event listeners set up');
     
     // Check if game is already in progress
     if (NetworkService.roomId === roomId) {
+      console.log('🔄 Game already in progress, checking state...');
       // Check if both players have submitted their numbers
       // For now, assume we need to set up the game
       setGameState('setup');
+    } else {
+      console.log('🆕 New game setup');
     }
     
     // Set up typing listener after a short delay to ensure connection is ready
     setTimeout(() => {
       setupTypingListener();
     }, 1000);
-    
-    // Fetch available skins
-    // fetchAvailableSkins(); // This line is removed as skins are now from context
   };
 
   const handlePlayerJoined = (data) => {
-    console.log('Player joined event:', data);
+    console.log('👥 Player joined event received:', data);
+    console.log('🔍 Current roomId:', roomId, 'Event roomId:', data.roomId);
     if (data.roomId === roomId) {
+      console.log('✅ Player joined our room, transitioning to setup state');
       // Second player joined, transition to setup state
       setGameState('setup');
       Alert.alert('Player Joined!', 'Both players are now in the room. Enter your secret number to start the game.');
+    } else {
+      console.log('❌ Player joined different room, ignoring');
     }
   };
 
   const handlePlayerLeft = (data) => {
-    console.log('Player left event:', data);
+    console.log('👋 Player left event received:', data);
+    console.log('🔍 Current roomId:', roomId, 'Event roomId:', data.roomId);
     if (data.roomId === roomId) {
+      console.log('✅ Player left our room, transitioning to waiting state');
       setGameState('waiting');
       Alert.alert('Player Left', 'The other player has left the room. You can wait for them to rejoin or go back to the lobby.');
+    } else {
+      console.log('❌ Player left different room, ignoring');
     }
   };
 
+  const handleDisconnection = (error) => {
+    console.log('🔌 Disconnection event received:', error);
+    setConnectionError(error?.message || 'Connection lost to server');
+    setGameState('waiting');
+    
+    // Clear any ongoing game state
+    setHasSubmittedNumber(false);
+    setIsMyTurn(false);
+    
+    // Force cleanup of the connection
+    NetworkService.forceDisconnect();
+    
+    Alert.alert(
+      'Connection Lost', 
+      'Your connection to the server has been lost. Please check your internet connection and try again.',
+      [
+        {
+          text: 'Retry',
+          onPress: () => {
+            setConnectionError(null);
+            setupGame();
+          }
+        },
+        {
+          text: 'Go Back',
+          onPress: handleBack
+        }
+      ]
+    );
+  };
+
   const setupTypingListener = () => {
+    console.log('⌨️ Setting up typing listener...');
     // Check if NetworkService is connected and has the typing handler
     if (NetworkService.socket && NetworkService.socket.connected) {
+      console.log('✅ NetworkService connected, setting up typing handler');
       NetworkService.onPlayerTyping((data) => {
+        console.log('⌨️ Typing event received:', data);
         if (data.roomId === roomId && data.playerId !== NetworkService.playerId) {
+          console.log('✅ Typing event for our room, updating UI');
           setOpponentTyping(data.isTyping);
           setOpponentInput(data.currentInput || '');
+        } else {
+          console.log('❌ Typing event ignored - wrong room or same player');
         }
       });
+    } else {
+      console.log('❌ NetworkService not connected, skipping typing handler');
     }
   };
 
   const handleGameUpdate = (data) => {
+    console.log('🎮 Game update received:', data);
+    console.log('🔍 Current roomId:', roomId, 'Event roomId:', data.roomId);
     if (data.roomId === roomId) {
+      console.log('✅ Game update for our room, transitioning to playing state');
+      console.log('✅ Game state transitioning from', gameState, 'to playing');
       setGameState('playing');
-      setIsMyTurn(data.currentTurn === NetworkService.playerId);
+      const isMyTurnNow = data.currentTurn === NetworkService.playerId;
+      console.log('🎯 Current turn:', data.currentTurn, 'Player ID:', NetworkService.playerId, 'Is my turn:', isMyTurnNow);
+      setIsMyTurn(isMyTurnNow);
+    } else {
+      console.log('❌ Game update for different room, ignoring');
     }
   };
 
   const handleOpponentGuess = (data) => {
+    console.log('🎯 Opponent guess event received:', data);
+    console.log('🔍 Current roomId:', roomId, 'Event roomId:', data.roomId);
     if (data.roomId === roomId) {
+      console.log('✅ Opponent guess for our room, processing...');
       const guessData = data.guess;
-      setOpponentGuesses(prev => [...prev, {
+      
+      // Add to opponent guesses with proper feedback structure
+      const opponentGuess = {
         guess: guessData.guess,
         feedback: guessData.feedback,
         timestamp: new Date(guessData.timestamp)
-      }]);
+      };
+      
+      setOpponentGuesses(prev => [...prev, opponentGuess]);
+      
+      // Switch turn to current player
       setIsMyTurn(true);
+      
+      console.log('🎯 Opponent guess received:', opponentGuess);
+      console.log('🔄 Turn switched to current player');
+    } else {
+      console.log('❌ Opponent guess for different room, ignoring');
     }
   };
 
   const handleGameEnd = (data) => {
+    console.log('🏁 Game end event received:', data);
+    console.log('🔍 Current roomId:', roomId, 'Event roomId:', data.roomId);
     if (data.roomId === roomId) {
+      console.log('✅ Game end for our room, transitioning to finished state');
       setGameState('finished');
       setGameResult(data);
       onGameEnd && onGameEnd(data);
+    } else {
+      console.log('❌ Game end for different room, ignoring');
     }
   };
 
@@ -290,16 +382,36 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
       return;
     }
 
+    // Prevent duplicate submissions
+    if (hasSubmittedNumber) {
+      Alert.alert('Already Submitted', 'You have already submitted your secret number. Please wait for your opponent.');
+      return;
+    }
+
+    if (isSubmittingNumber) {
+      Alert.alert('Already Submitting', 'Please wait while your number is being submitted...');
+      return;
+    }
+
     setIsSubmittingNumber(true);
     try {
       // Submit secret number to server
-      NetworkService.startMultiplayerGame(secretNumber.join(''));
+      const result = await NetworkService.startMultiplayerGame(secretNumber.join(''));
       
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Success', 'Secret number submitted! Waiting for opponent...');
+      if (result && result.success) {
+        setHasSubmittedNumber(true); // Mark as submitted
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert('Success', 'Secret number submitted! Waiting for opponent...');
+        
+        // Clear the input to show it's been submitted
+        setSecretNumber(['', '', '', '', '']);
+      } else {
+        throw new Error(result?.error || 'Failed to submit number');
+      }
       
     } catch (error) {
-      Alert.alert('Error', 'Failed to submit secret number');
+      console.error('Error submitting secret number:', error);
+      Alert.alert('Error', error.message || 'Failed to submit secret number');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setIsSubmittingNumber(false);
@@ -317,29 +429,48 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
       return;
     }
 
+    // Check if it's the player's turn
+    if (!isMyTurn) {
+      Alert.alert('Not Your Turn', 'Please wait for your opponent to make their guess first.');
+      return;
+    }
+
+    // Prevent duplicate submissions
+    if (isSubmitting) {
+      Alert.alert('Already Submitting', 'Please wait while your guess is being submitted...');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Submit guess to server
-      NetworkService.submitGuess(currentGuess.join(''));
+      const result = await NetworkService.submitGuess(currentGuess.join(''));
       
-      // Add to local guesses
-      setGuesses(prev => [...prev, {
-        guess: currentGuess.join(''),
-        timestamp: Date.now()
-      }]);
-      
-      setCurrentGuess(['', '', '', '', '']);
-      setIsMyTurn(false);
-      
-      // Stop typing indicator
-      if (NetworkService.isConnected()) {
-        NetworkService.sendTypingUpdate(false);
+      if (result && result.success) {
+        // Add to local guesses with feedback
+        const guessWithFeedback = {
+          guess: currentGuess.join(''),
+          feedback: result.feedback,
+          timestamp: Date.now()
+        };
+        
+        setGuesses(prev => [...prev, guessWithFeedback]);
+        setCurrentGuess(['', '', '', '', '']);
+        setIsMyTurn(false);
+        
+        // Stop typing indicator
+        if (NetworkService.isConnected()) {
+          NetworkService.sendTypingUpdate(false);
+        }
+        
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        throw new Error(result?.error || 'Failed to submit guess');
       }
       
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
     } catch (error) {
-      Alert.alert('Error', 'Failed to submit guess');
+      console.error('Error submitting guess:', error);
+      Alert.alert('Error', error.message || 'Failed to submit guess');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setIsSubmitting(false);
@@ -452,10 +583,16 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
         <TouchableOpacity 
           style={[styles.submitButton, (isSecret ? secretNumber.some(d => d === '') : currentGuess.some(d => d === '')) && styles.submitButtonDisabled]} 
           onPress={isSecret ? submitSecretNumber : submitGuess}
-          disabled={(isSecret ? secretNumber.some(d => d === '') : currentGuess.some(d => d === '')) || (isSecret ? isSubmittingNumber : isSubmitting)}
+          disabled={
+            (isSecret ? secretNumber.some(d => d === '') : currentGuess.some(d => d === '')) || 
+            (isSecret ? isSubmittingNumber : isSubmitting) ||
+            (isSecret && hasSubmittedNumber) // Disable if secret number already submitted
+          }
         >
           {isSecret ? (
-            isSubmittingNumber ? (
+            hasSubmittedNumber ? (
+              <Text style={styles.submitButtonText}>Number Submitted ✓</Text>
+            ) : isSubmittingNumber ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
               <Text style={styles.submitButtonText}>Submit Secret Number</Text>

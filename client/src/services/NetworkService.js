@@ -6,17 +6,20 @@ import AuthService from './AuthService';
 class NetworkService {
   constructor() {
     this.socket = null;
-    this.isHost = false;
     this.roomId = null;
+    this.isHost = false;
     this.playerId = null;
+    this.isConnecting = false;
+    this.connectionPromise = null;
+    
+    // Event callbacks
     this.onGameStart = null;
     this.onPlayerJoined = null;
     this.onPlayerLeft = null;
     this.onGuessReceived = null;
     this.onGameEnd = null;
     this.onPlayerTyping = null;
-    this.isConnecting = false;
-    this.connectionPromise = null;
+    this.onDisconnect = null;
   }
 
   // Initialize connection to server
@@ -81,9 +84,14 @@ class NetworkService {
           console.log('Disconnected from server');
           this.isConnecting = false;
           this.handleDisconnection();
+          
+          // Notify UI about disconnection
+          if (this.onDisconnect) {
+            this.onDisconnect();
+          }
         });
 
-        // Game event handlers
+        // Game event handlers - match server event names exactly
         this.socket.on('gameStarted', (data) => {
           console.log('Game started event received:', data);
           if (this.onGameStart) this.onGameStart(data);
@@ -200,66 +208,79 @@ class NetworkService {
     });
   }
 
-  // Start the game
-  startGame(player1Number, player2Number) {
-    if (!this.socket || !this.roomId) {
-      throw new Error('Not connected or no room');
-    }
-
-    if (!player1Number || !player2Number) {
-      throw new Error('Both player numbers are required');
-    }
-
-    this.socket.emit('startGame', {
-      roomId: this.roomId,
-      player1Number,
-      player2Number,
-    });
-  }
-
   // Start multiplayer game (both players submit their secret numbers)
   startMultiplayerGame(playerNumber) {
-    if (!this.socket || !this.roomId) {
-      throw new Error('Not connected or no room');
-    }
+    return new Promise((resolve, reject) => {
+      if (!this.socket || !this.roomId) {
+        reject(new Error('Not connected or no room'));
+        return;
+      }
 
-    if (!playerNumber || typeof playerNumber !== 'string' || playerNumber.length !== 5) {
-      throw new Error('Invalid player number format');
-    }
+      if (!playerNumber || typeof playerNumber !== 'string' || playerNumber.length !== 5) {
+        reject(new Error('Invalid player number format'));
+        return;
+      }
 
-    this.socket.emit('startMultiplayerGame', {
-      roomId: this.roomId,
-      playerNumber,
+      // Add timeout to prevent hanging
+      const timeout = setTimeout(() => {
+        reject(new Error('Request timed out'));
+      }, 10000);
+
+      try {
+        this.socket.emit('startMultiplayerGame', {
+          roomId: this.roomId,
+          playerNumber,
+        }, (response) => {
+          clearTimeout(timeout);
+          
+          if (response && response.success) {
+            resolve(response);
+          } else {
+            reject(new Error(response?.error || 'Failed to submit number'));
+          }
+        });
+      } catch (error) {
+        clearTimeout(timeout);
+        reject(error);
+      }
     });
   }
 
   // Submit a guess
   submitGuess(guess) {
-    if (!this.socket || !this.roomId) {
-      throw new Error('Not connected or no room');
-    }
+    return new Promise((resolve, reject) => {
+      if (!this.socket || !this.roomId) {
+        reject(new Error('Not connected or no room'));
+        return;
+      }
 
-    if (!guess || typeof guess !== 'string' || guess.length !== 5) {
-      throw new Error('Invalid guess format');
-    }
+      if (!guess || typeof guess !== 'string' || guess.length !== 5) {
+        reject(new Error('Invalid guess format'));
+        return;
+      }
 
-    this.socket.emit('submitGuess', {
-      roomId: this.roomId,
-      playerId: this.playerId,
-      guess,
-    });
-  }
+      // Add timeout to prevent hanging
+      const timeout = setTimeout(() => {
+        reject(new Error('Request timed out'));
+      }, 10000);
 
-  // Provide feedback for a guess
-  provideFeedback(guessId, feedback) {
-    if (!this.socket || !this.roomId) {
-      throw new Error('Not connected or no room');
-    }
-
-    this.socket.emit('provideFeedback', {
-      roomId: this.roomId,
-      guessId,
-      feedback,
+      try {
+        this.socket.emit('submitGuess', {
+          roomId: this.roomId,
+          guess,
+        }, (response) => {
+          clearTimeout(timeout);
+          
+          if (response && response.success) {
+            resolve(response);
+          } else {
+            reject(new Error(response?.error || 'Failed to submit guess'));
+          }
+        });
+      } catch (error) {
+        clearTimeout(timeout);
+        reject(error);
+      }
     });
   }
 
@@ -298,6 +319,44 @@ class NetworkService {
 
   // Handle disconnection
   handleDisconnection() {
+    this.roomId = null;
+    this.isHost = false;
+    this.playerId = null;
+    this.isConnecting = false;
+    this.connectionPromise = null;
+  }
+
+  // Force disconnect and cleanup (for when connection is lost unexpectedly)
+  forceDisconnect() {
+    console.log('Force disconnecting and cleaning up...');
+    
+    // Clear all callbacks
+    this.onGameStart = null;
+    this.onPlayerJoined = null;
+    this.onPlayerLeft = null;
+    this.onGuessReceived = null;
+    this.onGameEnd = null;
+    this.onPlayerTyping = null;
+    this.onDisconnect = null;
+    
+    // Clean up socket
+    if (this.socket) {
+      try {
+        this.socket.off('disconnect');
+        this.socket.off('connect_error');
+        this.socket.off('gameStarted');
+        this.socket.off('playerJoined');
+        this.socket.off('playerDisconnected');
+        this.socket.off('guessSubmitted');
+        this.socket.off('gameEnded');
+        this.socket.off('playerTyping');
+      } catch (error) {
+        console.error('Error cleaning up socket listeners:', error);
+      }
+    }
+    
+    // Reset state
+    this.socket = null;
     this.roomId = null;
     this.isHost = false;
     this.playerId = null;

@@ -190,7 +190,8 @@ export default function LoadingScreen({ onLoadingComplete, onNavigateToLogin }) 
 
         // Extract theme skins from shop items
         const themeSkins = extractThemeSkins(shopItems);
-        console.log('Extracted theme skins:', themeSkins);
+        const skinNames = Object.values(themeSkins).map(skin => skin.name);
+        console.log('Extracted theme skin names:', skinNames);
 
         // Step 4: Load User Skins
         console.log('Step 4: Loading User Skins...');
@@ -309,7 +310,6 @@ export default function LoadingScreen({ onLoadingComplete, onNavigateToLogin }) 
         category: 'Theme'
       };
       
-      console.log('Extracted theme skins:', themeSkins);
       return themeSkins;
     } catch (error) {
       console.error('Error extracting theme skins:', error);
