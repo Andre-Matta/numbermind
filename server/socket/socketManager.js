@@ -158,6 +158,7 @@ const setupSocketIO = (server) => {
 
         // Join the room
         socket.join(roomId);
+        console.log(`🔌 Socket ${socket.id} joined room ${roomId}`);
         
         // Update user's ad counter
         await User.findByIdAndUpdate(socket.userId, {
@@ -415,6 +416,11 @@ const setupSocketIO = (server) => {
           }
 
           // Notify all players
+          console.log(`📡 Emitting gameStarted event to room ${roomId}`);
+          console.log(`🔍 Players in room:`, game.players);
+          console.log(`🔍 Socket IDs in room:`, Array.from(io.sockets.adapter.rooms.get(roomId) || []));
+          console.log(`🎯 Current turn set to: ${game.currentTurn} (${typeof game.currentTurn})`);
+          
           io.to(roomId).emit('gameStarted', {
             roomId,
             currentTurn: game.currentTurn,
@@ -469,7 +475,8 @@ const setupSocketIO = (server) => {
           return callback({ success: false, error: 'Game not in progress' });
         }
 
-        if (game.currentTurn !== socket.userId) {
+        if (game.currentTurn.toString() !== socket.userId) {
+          console.log(`⚠️ Turn mismatch: currentTurn=${game.currentTurn} (${typeof game.currentTurn}), socket.userId=${socket.userId} (${typeof socket.userId})`);
           return callback({ success: false, error: 'Not your turn' });
         }
 

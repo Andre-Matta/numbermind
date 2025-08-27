@@ -123,6 +123,27 @@ async function testMultiplayer() {
       });
     });
 
+    // Set up event listeners for gameStarted event after both players are connected
+    console.log('👂 Setting up event listeners for gameStarted event...');
+    let gameStartedReceived = false;
+    let gameStartedData = null;
+    
+    const handleGameStarted = (data, source) => {
+      if (!gameStartedReceived) {
+        gameStartedReceived = true;
+        console.log(`✅ Game started (${source}):`, data);
+        gameStartedData = data;
+      }
+    };
+    
+    // Listen on both sockets
+    player1Socket.on('gameStarted', (data) => handleGameStarted(data, 'Player 1'));
+    player2Socket.on('gameStarted', (data) => handleGameStarted(data, 'Player 2'));
+    
+    console.log('👂 Event listeners set up for gameStarted event');
+    console.log('🔍 Player 1 socket ID:', player1Socket.id);
+    console.log('🔍 Player 2 socket ID:', player2Socket.id);
+
     // Test 3: Both players submit secret numbers
     console.log('\n📱 Test 3: Both players submit secret numbers');
     
@@ -173,26 +194,31 @@ async function testMultiplayer() {
     // Wait for game to start with timeout
     await new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error('Game start timeout - gameStarted event not received'));
+        if (!gameStartedReceived) {
+          reject(new Error('Game start timeout - gameStarted event not received'));
+        }
       }, 15000);
       
-      player1Socket.once('gameStarted', (data) => {
-        clearTimeout(timeout);
-        console.log('✅ Game started:', data);
-        resolve();
-      });
+      // Check if game already started
+      const checkGameStarted = () => {
+        if (gameStartedReceived) {
+          clearTimeout(timeout);
+          resolve();
+        } else {
+          setTimeout(checkGameStarted, 100);
+        }
+      };
       
-      // Also listen on player2 socket as backup
-      player2Socket.once('gameStarted', (data) => {
-        clearTimeout(timeout);
-        console.log('✅ Game started (Player 2):', data);
-        resolve();
-      });
+      checkGameStarted();
     });
 
     console.log('🎮 Game is now active, proceeding with guess submission...');
 
     // Player 1 submits a guess
+    console.log('🎯 Player 1 attempting to submit guess: 11111');
+    console.log('🔍 Current turn from gameStarted event:', gameStartedData?.currentTurn);
+    console.log('🔍 Player 1 ID:', PLAYER1_USER_ID);
+    
     await new Promise((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error('Submit guess timeout')), 10000);
       
@@ -202,9 +228,10 @@ async function testMultiplayer() {
       }, (response) => {
         clearTimeout(timeout);
         if (response && response.success) {
-          console.log('✅ Player 1 submitted guess');
+          console.log('✅ Player 1 submitted guess successfully');
           resolve();
         } else {
+          console.log('❌ Player 1 failed to submit guess:', response?.error);
           reject(new Error(response?.error || 'Failed to submit guess'));
         }
       });
