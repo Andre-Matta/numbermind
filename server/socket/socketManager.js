@@ -66,6 +66,8 @@ const setupSocketIO = (server) => {
         }
 
         const roomId = generateRoomId();
+        console.log(`🏠 Creating private room ${roomId} for user ${socket.user.username} (${socket.userId})`);
+        
         const game = new Game({
           roomId,
           host: socket.userId,
@@ -86,6 +88,8 @@ const setupSocketIO = (server) => {
         await User.findByIdAndUpdate(socket.userId, {
           $inc: { 'adSystem.gamesSinceLastAd': 1 }
         });
+
+        console.log(`✅ Room ${roomId} created successfully with ${game.players.length} players`);
 
         callback({
           success: true,
@@ -112,6 +116,7 @@ const setupSocketIO = (server) => {
         }
 
         const { roomId } = data;
+        console.log(`👥 User ${socket.user.username} (${socket.userId}) attempting to join room ${roomId}`);
         
         if (!roomId) {
           return callback({ success: false, error: 'Room ID is required' });
@@ -120,10 +125,12 @@ const setupSocketIO = (server) => {
         const game = gameRooms.get(roomId);
 
         if (!game) {
+          console.log(`❌ Room ${roomId} not found`);
           return callback({ success: false, error: 'Room not found' });
         }
 
         if (game.gameState !== 'waiting') {
+          console.log(`❌ Room ${roomId} is not in waiting state (current: ${game.gameState})`);
           return callback({ success: false, error: 'Game already in progress' });
         }
 
@@ -131,6 +138,7 @@ const setupSocketIO = (server) => {
         if (game.players.includes(socket.userId)) {
           // Player is already in room, just join the socket room
           socket.join(roomId);
+          console.log(`✅ User ${socket.user.username} already in room ${roomId}, just joined socket room`);
           return callback({
             success: true,
             roomId,
@@ -140,6 +148,7 @@ const setupSocketIO = (server) => {
         }
 
         if (game.players.length >= game.maxPlayers) {
+          console.log(`❌ Room ${roomId} is full (${game.players.length}/${game.maxPlayers})`);
           return callback({ success: false, error: 'Room is full' });
         }
 
@@ -154,6 +163,8 @@ const setupSocketIO = (server) => {
         await User.findByIdAndUpdate(socket.userId, {
           $inc: { 'adSystem.gamesSinceLastAd': 1 }
         });
+
+        console.log(`✅ User ${socket.user.username} joined room ${roomId}. Total players: ${game.players.length}`);
 
         // Notify other players
         socket.to(roomId).emit('playerJoined', {
@@ -354,13 +365,35 @@ const setupSocketIO = (server) => {
         }
         game.playerNumbers[socket.userId] = playerNumber;
 
+        console.log(`🔢 Player ${socket.user.username} submitted number in room ${roomId}`);
+        console.log(`📊 Current playerNumbers:`, game.playerNumbers);
+        console.log(`👥 Total players: ${game.players.length}, Numbers submitted: ${Object.keys(game.playerNumbers).length}`);
+
         // Check if both players have submitted their numbers
         if (Object.keys(game.playerNumbers).length === 2) {
+          console.log(`🎮 Both players submitted numbers! Starting game in room ${roomId}`);
           game.gameState = 'playing';
           game.currentTurn = game.players[0];
           game.startedAt = new Date();
 
-          await game.save();
+          try {
+            // Use findByIdAndUpdate to avoid parallel save issues
+            await Game.findByIdAndUpdate(game._id, {
+              gameState: game.gameState,
+              currentTurn: game.currentTurn,
+              startedAt: game.startedAt,
+              playerNumbers: game.playerNumbers
+            });
+            
+            // Update the in-memory game object
+            game.gameState = game.gameState;
+            game.currentTurn = game.currentTurn;
+            game.startedAt = game.startedAt;
+            
+          } catch (error) {
+            console.error('Error saving game state:', error);
+            return callback({ success: false, error: 'Failed to start game' });
+          }
 
           // Notify all players
           io.to(roomId).emit('gameStarted', {
@@ -371,7 +404,15 @@ const setupSocketIO = (server) => {
 
           console.log(`🎮 Multiplayer game started in room: ${roomId}`);
         } else {
-          await game.save();
+          try {
+            // Use findByIdAndUpdate to avoid parallel save issues
+            await Game.findByIdAndUpdate(game._id, {
+              playerNumbers: game.playerNumbers
+            });
+          } catch (error) {
+            console.error('Error saving player number:', error);
+            return callback({ success: false, error: 'Failed to save number' });
+          }
           console.log(`📝 Player ${socket.user.username} submitted number in room: ${roomId}`);
         }
 
@@ -447,7 +488,27 @@ const setupSocketIO = (server) => {
           await updateGameStats(game);
         }
 
-        await game.save();
+        try {
+          // Use findByIdAndUpdate to avoid parallel save issues
+          await Game.findByIdAndUpdate(game._id, {
+            guessHistory: game.guessHistory,
+            currentTurn: game.currentTurn,
+            gameState: game.gameState,
+            winner: game.winner,
+            endedAt: game.endedAt
+          });
+          
+          // Update the in-memory game object
+          game.guessHistory = game.guessHistory;
+          game.currentTurn = game.currentTurn;
+          game.gameState = game.gameState;
+          game.winner = game.winner;
+          game.endedAt = game.endedAt;
+          
+        } catch (error) {
+          console.error('Error saving guess:', error);
+          return callback({ success: false, error: 'Failed to save guess' });
+        }
 
         // Notify all players
         io.to(roomId).emit('guessSubmitted', {
@@ -720,37 +781,62 @@ const updateUserStatus = async (userId, isOnline) => {
 };
 
 const handlePlayerDisconnect = async (roomId, userId) => {
-  const game = gameRooms.get(roomId);
-  if (!game) return;
+  try {
+    const game = gameRooms.get(roomId);
+    if (!game) return;
 
-  // Remove player from game
-  game.players = game.players.filter(p => p !== userId);
-  
-  if (game.players.length === 0) {
-    // Room is empty, delete it
-    gameRooms.delete(roomId);
-    await Game.findByIdAndDelete(game._id);
-    console.log(`🗑️ Room deleted: ${roomId}`);
-  } else {
-    // Transfer host if needed
-    if (game.host === userId) {
-      game.host = game.players[0];
+    // Remove player from game
+    game.players = game.players.filter(p => p !== userId);
+    
+    if (game.players.length === 0) {
+      // Room is empty, delete it
+      gameRooms.delete(roomId);
+      try {
+        await Game.findByIdAndDelete(game._id);
+        console.log(`🗑️ Room deleted: ${roomId}`);
+      } catch (error) {
+        console.error('Error deleting game from database:', error);
+      }
+    } else {
+      // Transfer host if needed
+      if (game.host === userId) {
+        game.host = game.players[0];
+      }
+      
+      // End game if in progress
+      if (game.gameState === 'playing') {
+        game.gameState = 'abandoned';
+        game.endedAt = new Date();
+      }
+      
+      try {
+        // Use findByIdAndUpdate to avoid parallel save issues
+        await Game.findByIdAndUpdate(game._id, {
+          players: game.players,
+          host: game.host,
+          gameState: game.gameState,
+          endedAt: game.endedAt
+        });
+        
+        // Update the in-memory game object
+        game.players = game.players;
+        game.host = game.host;
+        game.gameState = game.gameState;
+        game.endedAt = game.endedAt;
+        
+      } catch (error) {
+        console.error('Error updating game state on disconnect:', error);
+      }
+      
+      // Notify remaining players
+      io.to(roomId).emit('playerDisconnected', {
+        playerId: userId,
+        roomId,
+        gameState: game.gameState
+      });
     }
-    
-    // End game if in progress
-    if (game.gameState === 'playing') {
-      game.gameState = 'abandoned';
-      game.endedAt = new Date();
-    }
-    
-    await game.save();
-    
-    // Notify remaining players
-    io.to(roomId).emit('playerDisconnected', {
-      playerId: userId,
-      roomId,
-      gameState: game.gameState
-    });
+  } catch (error) {
+    console.error('Error in handlePlayerDisconnect:', error);
   }
 };
 

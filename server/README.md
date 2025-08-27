@@ -98,6 +98,42 @@ EMAIL_USER=your-email@gmail.com
 EMAIL_PASSWORD=your-app-password
 ```
 
+## 🧪 Testing
+
+### **Quick Setup for Testing**
+```bash
+# 1. Setup environment (creates .env file)
+npm run setup-env
+
+# 2. Create test user
+npm run create-test-user
+
+# 3. Test basic socket connection
+npm run test-socket
+
+# 4. Test full multiplayer functionality
+npm run test-multiplayer
+```
+
+### **Automated Setup (Windows)**
+```bash
+# Run the batch file for automatic setup
+scripts\setup-and-test.bat
+
+# Or use PowerShell
+scripts\setup-and-test.ps1
+```
+
+### **Available Test Scripts**
+- `npm run test-socket` - Basic socket connection test
+- `npm run test-multiplayer` - Full multiplayer game test
+- `npm run test-auth` - Authentication system test
+- `npm run test-users` - User management test
+- `npm run test-leaderboard` - Leaderboard functionality test
+
+### **Troubleshooting**
+See `scripts/TROUBLESHOOTING.md` for detailed troubleshooting guide.
+
 ### **Optional Variables**
 ```env
 # Stripe (for payments)

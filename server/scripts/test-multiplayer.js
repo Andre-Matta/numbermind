@@ -4,8 +4,27 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 // Test configuration
-const SERVER_URL = process.env.SERVER_URL;
-const TEST_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFuZHlhZGVsMzlAZ21haWwuY29tIiwiaWF0IjoxNzU2MjQ3OTg1LCJleHAiOjE3NTYzMzQzODV9.N6tNUadhf7pKLgSYEVp5YX8iVye7_vqOCoEC_ZmaQYQ";
+const SERVER_URL = process.env.SERVER_URL || 'http://localhost:5000';
+
+// Create different JWT tokens for each player to simulate real multiplayer
+const PLAYER1_USER_ID = '68ae37b12c30194d2fc18711'; // Player 1
+const PLAYER2_USER_ID = '68ae37bb2c30194d2fc18714'; // Player 2 (different ID)
+
+const PLAYER1_TOKEN = require('jsonwebtoken').sign(
+  { userId: PLAYER1_USER_ID },
+  process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production',
+  { expiresIn: '1h' }
+);
+
+const PLAYER2_TOKEN = require('jsonwebtoken').sign(
+  { userId: PLAYER2_USER_ID },
+  process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production',
+  { expiresIn: '1h' }
+);
+
+console.log('🔗 Testing connection to:', SERVER_URL);
+console.log('🔑 Player 1 token for user:', PLAYER1_USER_ID);
+console.log('🔑 Player 2 token for user:', PLAYER2_USER_ID);
 
 // Test data
 let roomId = null;
@@ -19,29 +38,35 @@ async function testMultiplayer() {
     // Test 1: Player 1 connects and creates room
     console.log('\n📱 Test 1: Player 1 connects and creates room');
     player1Socket = io(SERVER_URL, {
-      auth: { token: TEST_TOKEN },
-      query: { token: TEST_TOKEN }
+      auth: { token: PLAYER1_TOKEN },
+      transports: ['websocket', 'polling'],
+      timeout: 10000
     });
 
     await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Connection timeout')), 5000);
+      const timeout = setTimeout(() => reject(new Error('Connection timeout')), 10000);
       
       player1Socket.on('connect', () => {
         clearTimeout(timeout);
-        console.log('✅ Player 1 connected');
+        console.log('✅ Player 1 connected with ID:', player1Socket.id);
         resolve();
       });
       
       player1Socket.on('connect_error', (error) => {
         clearTimeout(timeout);
         console.error('❌ Player 1 connection failed:', error.message);
+        console.error('Error details:', error);
         reject(error);
+      });
+
+      player1Socket.on('error', (error) => {
+        console.error('❌ Player 1 socket error:', error);
       });
     });
 
     // Create room
     roomId = await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Create room timeout')), 5000);
+      const timeout = setTimeout(() => reject(new Error('Create room timeout')), 10000);
       
       player1Socket.emit('createPrivateRoom', { gameMode: 'standard' }, (response) => {
         clearTimeout(timeout);
@@ -57,29 +82,35 @@ async function testMultiplayer() {
     // Test 2: Player 2 connects and joins room
     console.log('\n📱 Test 2: Player 2 connects and joins room');
     player2Socket = io(SERVER_URL, {
-      auth: { token: TEST_TOKEN },
-      query: { token: TEST_TOKEN }
+      auth: { token: PLAYER2_TOKEN },
+      transports: ['websocket', 'polling'],
+      timeout: 10000
     });
 
     await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Connection timeout')), 5000);
+      const timeout = setTimeout(() => reject(new Error('Connection timeout')), 10000);
       
       player2Socket.on('connect', () => {
         clearTimeout(timeout);
-        console.log('✅ Player 2 connected');
+        console.log('✅ Player 2 connected with ID:', player2Socket.id);
         resolve();
       });
       
       player2Socket.on('connect_error', (error) => {
         clearTimeout(timeout);
         console.error('❌ Player 2 connection failed:', error.message);
+        console.error('Error details:', error);
         reject(error);
+      });
+
+      player2Socket.on('error', (error) => {
+        console.error('❌ Player 2 socket error:', error);
       });
     });
 
     // Join room
     await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Join room timeout')), 5000);
+      const timeout = setTimeout(() => reject(new Error('Join room timeout')), 10000);
       
       player2Socket.emit('joinPrivateRoom', { roomId }, (response) => {
         clearTimeout(timeout);
@@ -97,7 +128,7 @@ async function testMultiplayer() {
     
     // Player 1 submits number
     await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Submit number timeout')), 5000);
+      const timeout = setTimeout(() => reject(new Error('Submit number timeout')), 10000);
       
       player1Socket.emit('startMultiplayerGame', { 
         roomId, 
@@ -115,7 +146,7 @@ async function testMultiplayer() {
 
     // Player 2 submits number
     await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Submit number timeout')), 5000);
+      const timeout = setTimeout(() => reject(new Error('Submit number timeout')), 10000);
       
       player2Socket.emit('startMultiplayerGame', { 
         roomId, 
@@ -133,18 +164,33 @@ async function testMultiplayer() {
 
     // Test 4: Game starts and players can submit guesses
     console.log('\n📱 Test 4: Game starts and players can submit guesses');
+    console.log('⏳ Waiting for gameStarted event...');
     
-    // Wait for game to start
-    await new Promise((resolve) => {
+    // Wait for game to start with timeout
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Game start timeout - gameStarted event not received'));
+      }, 15000);
+      
       player1Socket.once('gameStarted', (data) => {
+        clearTimeout(timeout);
         console.log('✅ Game started:', data);
+        resolve();
+      });
+      
+      // Also listen on player2 socket as backup
+      player2Socket.once('gameStarted', (data) => {
+        clearTimeout(timeout);
+        console.log('✅ Game started (Player 2):', data);
         resolve();
       });
     });
 
+    console.log('🎮 Game is now active, proceeding with guess submission...');
+
     // Player 1 submits a guess
     await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Submit guess timeout')), 5000);
+      const timeout = setTimeout(() => reject(new Error('Submit guess timeout')), 10000);
       
       player1Socket.emit('submitGuess', { 
         roomId, 
@@ -165,6 +211,16 @@ async function testMultiplayer() {
   } catch (error) {
     console.error('\n❌ Test failed:', error.message);
     console.error('Stack trace:', error.stack);
+    
+    // Additional debugging info
+    if (player1Socket) {
+      console.log('Player 1 socket state:', player1Socket.connected);
+      console.log('Player 1 socket ID:', player1Socket.id);
+    }
+    if (player2Socket) {
+      console.log('Player 2 socket state:', player2Socket.connected);
+      console.log('Player 2 socket ID:', player2Socket.id);
+    }
   } finally {
     // Cleanup
     if (player1Socket) {
