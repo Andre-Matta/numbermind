@@ -10,6 +10,7 @@
     "populate-db": "node scripts/populateUsers.js && node scripts/populateShop.js",
     "populate-users": "node scripts/populateUsers.js",
     "populate-shop": "node scripts/populateShop.js",
+    "test-db": "node scripts/test-mongodb.js",
     "test-users": "node scripts/testUsers.js",
     "test-leaderboard": "node scripts/testLeaderboard.js",
     "test-auth": "node scripts/testAuth.js",
