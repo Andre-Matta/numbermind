@@ -15,11 +15,23 @@ class NetworkService {
     this.onGuessReceived = null;
     this.onGameEnd = null;
     this.onPlayerTyping = null;
+    this.isConnecting = false;
+    this.connectionPromise = null;
   }
 
   // Initialize connection to server
   connect() {
-    return new Promise(async (resolve, reject) => {
+    // Prevent multiple simultaneous connection attempts
+    if (this.isConnecting && this.connectionPromise) {
+      return this.connectionPromise;
+    }
+
+    if (this.socket && this.socket.connected) {
+      return Promise.resolve(true);
+    }
+
+    this.isConnecting = true;
+    this.connectionPromise = new Promise(async (resolve, reject) => {
       try {
         const url = config.SERVER_URL;
         console.log('Attempting to connect to:', url);
@@ -27,6 +39,7 @@ class NetworkService {
         // Get authentication token
         const token = AuthService.getToken();
         if (!token) {
+          this.isConnecting = false;
           reject(new Error('No authentication token available'));
           return;
         }
@@ -49,6 +62,7 @@ class NetworkService {
         this.socket.on('connect', () => {
           console.log('Connected to server');
           this.playerId = this.socket.id;
+          this.isConnecting = false;
           resolve(true);
         });
 
@@ -59,49 +73,68 @@ class NetworkService {
             context: error.context,
             type: error.type
           });
+          this.isConnecting = false;
           reject(error);
         });
 
         this.socket.on('disconnect', () => {
           console.log('Disconnected from server');
+          this.isConnecting = false;
           this.handleDisconnection();
         });
 
         // Game event handlers
         this.socket.on('gameStarted', (data) => {
+          console.log('Game started event received:', data);
           if (this.onGameStart) this.onGameStart(data);
         });
 
         this.socket.on('playerJoined', (data) => {
+          console.log('Player joined event received:', data);
           if (this.onPlayerJoined) this.onPlayerJoined(data);
         });
 
         this.socket.on('playerDisconnected', (data) => {
+          console.log('Player disconnected event received:', data);
           if (this.onPlayerLeft) this.onPlayerLeft(data);
         });
 
         this.socket.on('guessSubmitted', (data) => {
+          console.log('Guess submitted event received:', data);
           if (this.onGuessReceived) this.onGuessReceived(data);
         });
 
         this.socket.on('gameEnded', (data) => {
+          console.log('Game ended event received:', data);
           if (this.onGameEnd) this.onGameEnd(data);
         });
 
         this.socket.on('playerTyping', (data) => {
+          console.log('Player typing event received:', data);
           if (this.onPlayerTyping) this.onPlayerTyping(data);
         });
 
+        // Set connection timeout
+        setTimeout(() => {
+          if (this.isConnecting) {
+            this.isConnecting = false;
+            reject(new Error('Connection timeout'));
+          }
+        }, config.SOCKET_TIMEOUT);
+
       } catch (error) {
+        this.isConnecting = false;
         reject(error);
       }
     });
+
+    return this.connectionPromise;
   }
 
   // Create a new game room
   createRoom() {
     return new Promise((resolve, reject) => {
-      if (!this.socket) {
+      if (!this.socket || !this.socket.connected) {
         reject(new Error('Not connected to server'));
         return;
       }
@@ -111,25 +144,35 @@ class NetworkService {
         reject(new Error('Request timed out'));
       }, 10000); // 10 second timeout
 
-      this.socket.emit('createPrivateRoom', { gameMode: 'standard' }, (response) => {
+      try {
+        this.socket.emit('createPrivateRoom', { gameMode: 'standard' }, (response) => {
+          clearTimeout(timeout);
+          
+          if (response && response.success) {
+            this.roomId = response.roomId;
+            this.isHost = true;
+            resolve(response);
+          } else {
+            reject(new Error(response?.error || 'Failed to create room'));
+          }
+        });
+      } catch (error) {
         clearTimeout(timeout);
-        
-        if (response && response.success) {
-          this.roomId = response.roomId;
-          this.isHost = true;
-          resolve(response);
-        } else {
-          reject(new Error(response?.error || 'Failed to create room'));
-        }
-      });
+        reject(error);
+      }
     });
   }
 
   // Join an existing game room
   joinRoom(roomId) {
     return new Promise((resolve, reject) => {
-      if (!this.socket) {
+      if (!this.socket || !this.socket.connected) {
         reject(new Error('Not connected to server'));
+        return;
+      }
+
+      if (!roomId || typeof roomId !== 'string') {
+        reject(new Error('Invalid room ID'));
         return;
       }
 
@@ -138,17 +181,22 @@ class NetworkService {
         reject(new Error('Request timed out'));
       }, 10000); // 10 second timeout
 
-      this.socket.emit('joinPrivateRoom', { roomId }, (response) => {
+      try {
+        this.socket.emit('joinPrivateRoom', { roomId }, (response) => {
+          clearTimeout(timeout);
+          
+          if (response && response.success) {
+            this.roomId = response.roomId;
+            this.isHost = false;
+            resolve(response);
+          } else {
+            reject(new Error(response?.error || 'Failed to join room'));
+          }
+        });
+      } catch (error) {
         clearTimeout(timeout);
-        
-        if (response && response.success) {
-          this.roomId = response.roomId;
-          this.isHost = false;
-          resolve(response);
-        } else {
-          reject(new Error(response?.error || 'Failed to join room'));
-        }
-      });
+        reject(error);
+      }
     });
   }
 
@@ -156,6 +204,10 @@ class NetworkService {
   startGame(player1Number, player2Number) {
     if (!this.socket || !this.roomId) {
       throw new Error('Not connected or no room');
+    }
+
+    if (!player1Number || !player2Number) {
+      throw new Error('Both player numbers are required');
     }
 
     this.socket.emit('startGame', {
@@ -171,6 +223,10 @@ class NetworkService {
       throw new Error('Not connected or no room');
     }
 
+    if (!playerNumber || typeof playerNumber !== 'string' || playerNumber.length !== 5) {
+      throw new Error('Invalid player number format');
+    }
+
     this.socket.emit('startMultiplayerGame', {
       roomId: this.roomId,
       playerNumber,
@@ -181,6 +237,10 @@ class NetworkService {
   submitGuess(guess) {
     if (!this.socket || !this.roomId) {
       throw new Error('Not connected or no room');
+    }
+
+    if (!guess || typeof guess !== 'string' || guess.length !== 5) {
+      throw new Error('Invalid guess format');
     }
 
     this.socket.emit('submitGuess', {
@@ -206,7 +266,13 @@ class NetworkService {
   // Leave room
   leaveRoom() {
     if (this.socket && this.roomId) {
-      this.socket.emit('leaveRoom', { roomId: this.roomId });
+      try {
+        this.socket.emit('leaveRoom', { roomId: this.roomId });
+      } catch (error) {
+        console.error('Error leaving room:', error);
+      }
+      
+      // Clean up local state
       this.roomId = null;
       this.isHost = false;
     }
@@ -215,11 +281,18 @@ class NetworkService {
   // Disconnect from server
   disconnect() {
     if (this.socket) {
-      this.socket.disconnect();
+      try {
+        this.socket.disconnect();
+      } catch (error) {
+        console.error('Error disconnecting:', error);
+      }
+      
       this.socket = null;
       this.roomId = null;
       this.isHost = false;
       this.playerId = null;
+      this.isConnecting = false;
+      this.connectionPromise = null;
     }
   }
 
@@ -228,6 +301,8 @@ class NetworkService {
     this.roomId = null;
     this.isHost = false;
     this.playerId = null;
+    this.isConnecting = false;
+    this.connectionPromise = null;
   }
 
   // Get local IP address for LAN discovery
@@ -246,7 +321,7 @@ class NetworkService {
 
   // Check if connected to server
   isConnected() {
-    return this.socket && this.socket.connected;
+    return this.socket && this.socket.connected && !this.isConnecting;
   }
 
   // Get room info
@@ -260,27 +335,55 @@ class NetworkService {
 
   // Send typing update
   sendTypingUpdate(isTyping, currentInput = '') {
-    if (!this.socket || !this.roomId) return;
+    if (!this.socket || !this.roomId || !this.socket.connected) return;
     
-    this.socket.emit('typingUpdate', {
-      roomId: this.roomId,
-      isTyping,
-      currentInput
-    });
+    try {
+      this.socket.emit('typingUpdate', {
+        roomId: this.roomId,
+        isTyping,
+        currentInput
+      });
+    } catch (error) {
+      console.error('Error sending typing update:', error);
+    }
   }
 
   // Listen for typing updates
   onPlayerTyping(callback) {
     if (!this.socket) return;
     
-    this.socket.on('playerTyping', callback);
+    try {
+      this.socket.on('playerTyping', callback);
+    } catch (error) {
+      console.error('Error setting up typing listener:', error);
+    }
   }
 
   // Remove typing listener
   offPlayerTyping(callback) {
     if (!this.socket) return;
     
-    this.socket.off('playerTyping', callback);
+    try {
+      this.socket.off('playerTyping', callback);
+    } catch (error) {
+      console.error('Error removing typing listener:', error);
+    }
+  }
+
+  // Clean up all event listeners
+  cleanup() {
+    if (this.socket) {
+      try {
+        this.socket.off('gameStarted');
+        this.socket.off('playerJoined');
+        this.socket.off('playerDisconnected');
+        this.socket.off('guessSubmitted');
+        this.socket.off('gameEnded');
+        this.socket.off('playerTyping');
+      } catch (error) {
+        console.error('Error cleaning up event listeners:', error);
+      }
+    }
   }
 }
 

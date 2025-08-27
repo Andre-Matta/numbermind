@@ -34,6 +34,7 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
   const [isSubmittingNumber, setIsSubmittingNumber] = useState(false);
   const [selectedSkin, setSelectedSkin] = useState('default');
   const [showSkinSelector, setShowSkinSelector] = useState(false);
+  const [connectionError, setConnectionError] = useState(null);
   
   const typingTimeoutRef = useRef(null);
   const inputRef = useRef(null);
@@ -87,6 +88,8 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     NetworkService.onGameStart = handleGameUpdate;
     NetworkService.onGuessReceived = handleOpponentGuess;
     NetworkService.onGameEnd = handleGameEnd;
+    NetworkService.onPlayerJoined = handlePlayerJoined;
+    NetworkService.onPlayerLeft = handlePlayerLeft;
     
     // Check if game is already in progress
     if (NetworkService.roomId === roomId) {
@@ -102,6 +105,23 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     
     // Fetch available skins
     // fetchAvailableSkins(); // This line is removed as skins are now from context
+  };
+
+  const handlePlayerJoined = (data) => {
+    console.log('Player joined event:', data);
+    if (data.roomId === roomId) {
+      // Second player joined, transition to setup state
+      setGameState('setup');
+      Alert.alert('Player Joined!', 'Both players are now in the room. Enter your secret number to start the game.');
+    }
+  };
+
+  const handlePlayerLeft = (data) => {
+    console.log('Player left event:', data);
+    if (data.roomId === roomId) {
+      setGameState('waiting');
+      Alert.alert('Player Left', 'The other player has left the room. You can wait for them to rejoin or go back to the lobby.');
+    }
   };
 
   const setupTypingListener = () => {
@@ -464,13 +484,32 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
         </View>
         
         <View style={styles.waitingContainer}>
-          <ActivityIndicator size="large" color="#4a90e2" />
-          <Text style={styles.waitingText}>Waiting for opponent to join...</Text>
-          <Text style={styles.roomIdText}>Room: {roomId}</Text>
-          
-          <TouchableOpacity style={styles.cancelButton} onPress={handleBack}>
-            <Text style={styles.cancelButtonText}>Cancel & Return to Lobby</Text>
-          </TouchableOpacity>
+          {connectionError ? (
+            <View style={styles.errorContainer}>
+              <Ionicons name="warning" size={48} color="#dc3545" />
+              <Text style={styles.errorText}>Connection Error</Text>
+              <Text style={styles.errorDescription}>{connectionError}</Text>
+              <TouchableOpacity 
+                style={styles.retryButton} 
+                onPress={() => {
+                  setConnectionError(null);
+                  setupGame();
+                }}
+              >
+                <Text style={styles.retryButtonText}>Retry Connection</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              <ActivityIndicator size="large" color="#4a90e2" />
+              <Text style={styles.waitingText}>Waiting for opponent to join...</Text>
+              <Text style={styles.roomIdText}>Room: {roomId}</Text>
+              
+              <TouchableOpacity style={styles.cancelButton} onPress={handleBack}>
+                <Text style={styles.cancelButtonText}>Cancel & Return to Lobby</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </LinearGradient>
     );
@@ -901,6 +940,34 @@ const styles = StyleSheet.create({
    submitButtonDisabled: {
      backgroundColor: '#6c757d',
      opacity: 0.6,
+   },
+   errorContainer: {
+     alignItems: 'center',
+     padding: 20,
+   },
+   errorText: {
+     color: '#dc3545',
+     fontSize: 20,
+     fontWeight: 'bold',
+     marginTop: 15,
+     marginBottom: 10,
+   },
+   errorDescription: {
+     color: '#fff',
+     fontSize: 16,
+     textAlign: 'center',
+     marginBottom: 20,
+   },
+   retryButton: {
+     backgroundColor: '#4a90e2',
+     paddingHorizontal: 30,
+     paddingVertical: 15,
+     borderRadius: 15,
+   },
+   retryButtonText: {
+     color: '#fff',
+     fontSize: 16,
+     fontWeight: 'bold',
    },
    guessRow: {
      flexDirection: 'row',

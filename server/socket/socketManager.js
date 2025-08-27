@@ -42,6 +42,7 @@ const setupSocketIO = (server) => {
       socket.user = user;
       next();
     } catch (error) {
+      console.error('Authentication error:', error);
       next(new Error('Invalid token'));
     }
   });
@@ -58,6 +59,12 @@ const setupSocketIO = (server) => {
     // Handle private game room creation
     socket.on('createPrivateRoom', async (data, callback) => {
       try {
+        // Ensure callback is a function
+        if (typeof callback !== 'function') {
+          console.error('createPrivateRoom: callback is not a function');
+          return;
+        }
+
         const roomId = generateRoomId();
         const game = new Game({
           roomId,
@@ -89,14 +96,27 @@ const setupSocketIO = (server) => {
         console.log(`🏠 Private room created: ${roomId} by ${socket.user.username}`);
       } catch (error) {
         console.error('Error creating private room:', error);
-        callback({ success: false, error: 'Failed to create room' });
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to create room' });
+        }
       }
     });
 
     // Handle joining private room
     socket.on('joinPrivateRoom', async (data, callback) => {
       try {
+        // Ensure callback is a function
+        if (typeof callback !== 'function') {
+          console.error('joinPrivateRoom: callback is not a function');
+          return;
+        }
+
         const { roomId } = data;
+        
+        if (!roomId) {
+          return callback({ success: false, error: 'Room ID is required' });
+        }
+
         const game = gameRooms.get(roomId);
 
         if (!game) {
@@ -151,13 +171,21 @@ const setupSocketIO = (server) => {
         console.log(`👥 Player joined room: ${socket.user.username} -> ${roomId}`);
       } catch (error) {
         console.error('Error joining room:', error);
-        callback({ success: false, error: 'Failed to join room' });
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to join room' });
+        }
       }
     });
 
     // Handle ranked matchmaking
     socket.on('joinRankedQueue', async (data, callback) => {
       try {
+        // Ensure callback is a function
+        if (typeof callback !== 'function') {
+          console.error('joinRankedQueue: callback is not a function');
+          return;
+        }
+
         const { gameMode = 'standard' } = data;
         
         // Remove from any existing queues
@@ -166,7 +194,7 @@ const setupSocketIO = (server) => {
 
         // Add to ranked queue
         rankedQueue.set(socket.userId, {
-          rating: socket.user.gameStats.rating,
+          rating: socket.user.gameStats?.rating || 1000,
           gameMode,
           socketId: socket.id,
           timestamp: Date.now()
@@ -178,13 +206,21 @@ const setupSocketIO = (server) => {
         findRankedMatch(socket.userId, gameMode);
       } catch (error) {
         console.error('Error joining ranked queue:', error);
-        callback({ success: false, error: 'Failed to join queue' });
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to join queue' });
+        }
       }
     });
 
     // Handle casual matchmaking
     socket.on('joinCasualQueue', async (data, callback) => {
       try {
+        // Ensure callback is a function
+        if (typeof callback !== 'function') {
+          console.error('joinCasualQueue: callback is not a function');
+          return;
+        }
+
         const { gameMode = 'standard' } = data;
         
         // Remove from any existing queues
@@ -204,21 +240,47 @@ const setupSocketIO = (server) => {
         findCasualMatch(socket.userId, gameMode);
       } catch (error) {
         console.error('Error joining casual queue:', error);
-        callback({ success: false, error: 'Failed to join queue' });
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to join queue' });
+        }
       }
     });
 
     // Handle leaving matchmaking queues
     socket.on('leaveQueue', (callback) => {
-      matchmakingQueue.delete(socket.userId);
-      rankedQueue.delete(socket.userId);
-      callback({ success: true, message: 'Left queue' });
+      try {
+        // Ensure callback is a function
+        if (typeof callback !== 'function') {
+          console.error('leaveQueue: callback is not a function');
+          return;
+        }
+
+        matchmakingQueue.delete(socket.userId);
+        rankedQueue.delete(socket.userId);
+        callback({ success: true, message: 'Left queue' });
+      } catch (error) {
+        console.error('Error leaving queue:', error);
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to leave queue' });
+        }
+      }
     });
 
     // Handle game start
     socket.on('startGame', async (data, callback) => {
       try {
+        // Ensure callback is a function
+        if (typeof callback !== 'function') {
+          console.error('startGame: callback is not a function');
+          return;
+        }
+
         const { roomId, player1Number, player2Number } = data;
+        
+        if (!roomId) {
+          return callback({ success: false, error: 'Room ID is required' });
+        }
+
         const game = gameRooms.get(roomId);
 
         if (!game || game.host !== socket.userId) {
@@ -251,14 +313,31 @@ const setupSocketIO = (server) => {
         console.log(`🎮 Game started in room: ${roomId}`);
       } catch (error) {
         console.error('Error starting game:', error);
-        callback({ success: false, error: 'Failed to start game' });
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to start game' });
+        }
       }
     });
 
     // Handle multiplayer game start (players submit their secret numbers)
     socket.on('startMultiplayerGame', async (data, callback) => {
       try {
+        // Ensure callback is a function
+        if (typeof callback !== 'function') {
+          console.error('startMultiplayerGame: callback is not a function');
+          return;
+        }
+
         const { roomId, playerNumber } = data;
+        
+        if (!roomId) {
+          return callback({ success: false, error: 'Room ID is required' });
+        }
+
+        if (!playerNumber || !/^\d{5}$/.test(playerNumber)) {
+          return callback({ success: false, error: 'Invalid player number format' });
+        }
+
         const game = gameRooms.get(roomId);
 
         if (!game) {
@@ -299,14 +378,31 @@ const setupSocketIO = (server) => {
         callback({ success: true, message: 'Number submitted' });
       } catch (error) {
         console.error('Error starting multiplayer game:', error);
-        callback({ success: false, error: 'Failed to start game' });
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to start game' });
+        }
       }
     });
 
     // Handle guess submission
     socket.on('submitGuess', async (data, callback) => {
       try {
+        // Ensure callback is a function
+        if (typeof callback !== 'function') {
+          console.error('submitGuess: callback is not a function');
+          return;
+        }
+
         const { roomId, guess } = data;
+        
+        if (!roomId) {
+          return callback({ success: false, error: 'Room ID is required' });
+        }
+
+        if (!guess) {
+          return callback({ success: false, error: 'Guess is required' });
+        }
+
         const game = gameRooms.get(roomId);
 
         if (!game || game.gameState !== 'playing') {
@@ -324,6 +420,10 @@ const setupSocketIO = (server) => {
 
         // Calculate feedback
         const opponentNumber = game.playerNumbers[game.players.find(p => p !== socket.userId)];
+        if (!opponentNumber) {
+          return callback({ success: false, error: 'Opponent number not found' });
+        }
+
         const feedback = calculateFeedback(guess, opponentNumber, game.gameMode);
 
         // Add guess to history
@@ -370,7 +470,9 @@ const setupSocketIO = (server) => {
         console.log(`🎯 Guess submitted in room ${roomId}: ${guess}`);
       } catch (error) {
         console.error('Error submitting guess:', error);
-        callback({ success: false, error: 'Failed to submit guess' });
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to submit guess' });
+        }
       }
     });
 
@@ -378,6 +480,12 @@ const setupSocketIO = (server) => {
     socket.on('typingUpdate', (data) => {
       try {
         const { roomId, isTyping, currentInput } = data;
+        
+        if (!roomId) {
+          console.error('typingUpdate: roomId is required');
+          return;
+        }
+
         const game = gameRooms.get(roomId);
         
         if (!game) return;
@@ -387,12 +495,74 @@ const setupSocketIO = (server) => {
           playerId: socket.userId,
           playerName: socket.user.username,
           isTyping,
-          currentInput: isTyping ? currentInput : ''
+          currentInput: isTyping ? currentInput : '',
+          roomId
         });
         
         console.log(`⌨️  Typing update from ${socket.user.username} in room ${roomId}`);
       } catch (error) {
         console.error('Error handling typing update:', error);
+      }
+    });
+
+    // Handle room leaving
+    socket.on('leaveRoom', async (data, callback) => {
+      try {
+        const { roomId } = data;
+        
+        if (!roomId) {
+          if (typeof callback === 'function') {
+            callback({ success: false, error: 'Room ID is required' });
+          }
+          return;
+        }
+
+        const game = gameRooms.get(roomId);
+        if (game) {
+          // Remove player from game
+          game.players = game.players.filter(p => p !== socket.userId);
+          
+          if (game.players.length === 0) {
+            // Room is empty, delete it
+            gameRooms.delete(roomId);
+            await Game.findByIdAndDelete(game._id);
+            console.log(`🗑️ Room deleted: ${roomId}`);
+          } else {
+            // Transfer host if needed
+            if (game.host === socket.userId) {
+              game.host = game.players[0];
+            }
+            
+            // End game if in progress
+            if (game.gameState === 'playing') {
+              game.gameState = 'abandoned';
+              game.endedAt = new Date();
+            }
+            
+            await game.save();
+            
+            // Notify remaining players
+            socket.to(roomId).emit('playerDisconnected', {
+              playerId: socket.userId,
+              roomId,
+              gameState: game.gameState
+            });
+          }
+        }
+
+        // Leave the socket room
+        socket.leave(roomId);
+        
+        if (typeof callback === 'function') {
+          callback({ success: true, message: 'Left room' });
+        }
+        
+        console.log(`🚪 Player left room: ${socket.user.username} -> ${roomId}`);
+      } catch (error) {
+        console.error('Error leaving room:', error);
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to leave room' });
+        }
       }
     });
 
