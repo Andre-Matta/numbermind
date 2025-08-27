@@ -77,7 +77,7 @@ const sampleUsers = [
   {
     username: 'NumberMind_Pro',
     email: 'pro@numbermind.com',
-    password: 'password123',
+    password: 'Password123',
     coins: 5000,
     gameStats: {
       level: 25,
@@ -94,7 +94,7 @@ const sampleUsers = [
   {
     username: 'CodeBreaker_Elite',
     email: 'elite@numbermind.com',
-    password: 'password123',
+    password: 'Password123',
     coins: 3200,
     gameStats: {
       level: 18,
@@ -111,7 +111,7 @@ const sampleUsers = [
   {
     username: 'NumberNinja',
     email: 'ninja@numbermind.com',
-    password: 'password123',
+    password: 'Password123',
     coins: 2800,
     gameStats: {
       level: 15,
@@ -128,7 +128,7 @@ const sampleUsers = [
   {
     username: 'LogicMaster',
     email: 'logic@numbermind.com',
-    password: 'password123',
+    password: 'Password123',
     coins: 2100,
     gameStats: {
       level: 12,
@@ -145,7 +145,7 @@ const sampleUsers = [
   {
     username: 'PuzzleSolver',
     email: 'puzzle@numbermind.com',
-    password: 'password123',
+    password: 'Password123',
     coins: 1800,
     gameStats: {
       level: 10,
@@ -162,7 +162,7 @@ const sampleUsers = [
   {
     username: 'BrainTeaser',
     email: 'brain@numbermind.com',
-    password: 'password123',
+    password: 'Password123',
     coins: 1500,
     gameStats: {
       level: 8,
@@ -179,7 +179,7 @@ const sampleUsers = [
   {
     username: 'StrategyKing',
     email: 'strategy@numbermind.com',
-    password: 'password123',
+    password: 'Password123',
     coins: 4200,
     gameStats: {
       level: 22,
@@ -196,7 +196,7 @@ const sampleUsers = [
   {
     username: 'QuickThinker',
     email: 'quick@numbermind.com',
-    password: 'password123',
+    password: 'Password123',
     coins: 1900,
     gameStats: {
       level: 9,
@@ -213,7 +213,7 @@ const sampleUsers = [
   {
     username: 'MathWizard',
     email: 'math@numbermind.com',
-    password: 'password123',
+    password: 'Password123',
     coins: 3600,
     gameStats: {
       level: 20,
@@ -230,7 +230,7 @@ const sampleUsers = [
   {
     username: 'DeductionPro',
     email: 'deduction@numbermind.com',
-    password: 'password123',
+    password: 'Password123',
     coins: 2400,
     gameStats: {
       level: 14,
@@ -273,9 +273,9 @@ async function registerUser(userData) {
       }
     });
     
-    if (response.status === 200 && response.data.success) {
+    if (response.data.success) {
       console.log(`✅ Successfully registered: ${userData.username}`);
-      return response.data.data.user;
+      return response.data.user;
     } else {
       console.log(`❌ Failed to register ${userData.username}: ${response.data.message}`);
       return null;
@@ -383,7 +383,7 @@ async function populateUsers() {
       
       // Add delay between registrations to respect rate limits
       if (i < totalUsers - 1) { // Don't wait after the last user
-        const delay = 180000; // 3 minutes (allows 5 requests per 15 minutes)
+        const delay = 5000; // 3 minutes (allows 5 requests per 15 minutes)
         console.log(`⏳ Waiting ${delay / 1000 / 60} minutes before next registration...`);
         console.log(`📊 Progress: ${i + 1}/${totalUsers} users completed (${Math.round(((i + 1) / totalUsers) * 100)}%)`);
         console.log(`⏰ Estimated time remaining: ${Math.round((totalUsers - i - 1) * 3)} minutes`);

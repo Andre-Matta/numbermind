@@ -6,10 +6,10 @@
 
 const config = {
   // Server configuration
-  SERVER_URL: 'https://numbermind.onrender.com', // This should match your .env file
+  SERVER_URL: 'https://mastermind-numbers.onrender.com', // This should match your .env file
   
   // API endpoints
-  API_BASE_URL: 'https://numbermind.onrender.com/api',
+  API_BASE_URL: 'https://mastermind-numbers.onrender.com/api',
   
   // Socket configuration
   SOCKET_TIMEOUT: 15000,

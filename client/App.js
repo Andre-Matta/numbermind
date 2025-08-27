@@ -34,8 +34,8 @@ function AppContent() {
     );
   }
 
-  // If not authenticated and data not loaded, show loading screen
-  if (!isAuthenticated && !isDataLoaded) {
+  // If not authenticated and data not loaded, and we're in loading state, show loading screen
+  if (!isAuthenticated && !isDataLoaded && currentScreen === 'loading') {
     return (
       <LoadingScreen 
         onLoadingComplete={(data) => {
@@ -43,6 +43,7 @@ function AppContent() {
           setCurrentScreen('menu');
         }}
         onNavigateToLogin={() => {
+          // This will be called if user is not authenticated
           setCurrentScreen('login');
         }}
       />

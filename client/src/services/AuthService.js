@@ -38,6 +38,20 @@ class AuthService {
         body: JSON.stringify(userData),
       });
 
+      // Check if response is ok and content type is JSON
+      if (!response.ok) {
+        console.error('Registration response not ok:', response.status, response.statusText);
+        return { success: false, error: `Server error: ${response.status} ${response.statusText}` };
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('Registration response is not JSON:', contentType);
+        const textResponse = await response.text();
+        console.error('Response text:', textResponse);
+        return { success: false, error: 'Server returned invalid response format' };
+      }
+
       const data = await response.json();
 
       if (data.success) {
@@ -48,6 +62,9 @@ class AuthService {
       }
     } catch (error) {
       console.error('Registration error:', error);
+      if (error.name === 'SyntaxError') {
+        return { success: false, error: 'Server returned invalid JSON response' };
+      }
       return { success: false, error: 'Network error during registration' };
     }
   }
@@ -55,6 +72,9 @@ class AuthService {
   // Login user
   async login(credentials) {
     try {
+      console.log('Attempting login to:', `${config.API_BASE_URL}/auth/login`);
+      console.log('Login credentials:', { email: credentials.email, password: '***' });
+      
       const response = await fetch(`${config.API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
@@ -63,7 +83,27 @@ class AuthService {
         body: JSON.stringify(credentials),
       });
 
+      console.log('Login response status:', response.status);
+      console.log('Login response headers:', Object.fromEntries(response.headers.entries()));
+
+      // Check if response is ok and content type is JSON
+      if (!response.ok) {
+        console.error('Login response not ok:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Error response body:', errorText);
+        return { success: false, error: `Server error: ${response.status} ${response.statusText}` };
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('Login response is not JSON:', contentType);
+        const textResponse = await response.text();
+        console.error('Response text:', textResponse);
+        return { success: false, error: 'Server returned invalid response format' };
+      }
+
       const data = await response.json();
+      console.log('Login response data:', data);
 
       if (data.success) {
         await this.setAuthData(data.token, data.user);
@@ -73,6 +113,9 @@ class AuthService {
       }
     } catch (error) {
       console.error('Login error:', error);
+      if (error.name === 'SyntaxError') {
+        return { success: false, error: 'Server returned invalid JSON response' };
+      }
       return { success: false, error: 'Network error during login' };
     }
   }

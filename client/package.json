@@ -10,11 +10,9 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
-    "@expo/config-plugins": "~10.1.2",
-    "@expo/prebuild-config": "~9.0.0",
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-native-community/netinfo": "^11.4.1",
-    "expo": "~53.0.20",
+    "expo": "~53.0.22",
     "expo-dev-client": "~5.2.4",
     "expo-clipboard": "~7.1.5",
     "expo-haptics": "~14.1.4",

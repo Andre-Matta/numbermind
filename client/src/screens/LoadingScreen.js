@@ -52,14 +52,41 @@ export default function LoadingScreen({ onLoadingComplete, onNavigateToLogin }) 
 
   const textAnimation = useRef(new Animated.Value(0)).current;
   const [displayNumbers, setDisplayNumbers] = useState([1, 2, 3, 4, 5]);
+  
+  // Add timeout refs to prevent hanging
+  const timeoutRefs = useRef([]);
+  const animationRefs = useRef([]);
 
   useEffect(() => {
     startLoadingSequence();
+    
+    // Add a global timeout to prevent the loading screen from getting stuck
+    const globalTimeout = setTimeout(() => {
+      console.log('Global timeout reached, forcing navigation to login');
+      onNavigateToLogin();
+    }, 30000); // 30 second global timeout
+    
+    // Cleanup function to clear timeouts and stop animations
+    return () => {
+      clearTimeout(globalTimeout);
+      timeoutRefs.current.forEach(ref => clearTimeout(ref));
+      animationRefs.current.forEach(ref => {
+        if (ref && ref.stop) ref.stop();
+      });
+    };
   }, []);
 
   const startLoadingSequence = async () => {
-    await animateBoxes();
-    await performLoadingSteps();
+    try {
+      await animateBoxes();
+      await performLoadingSteps();
+    } catch (error) {
+      console.error('Loading sequence error:', error);
+      // Fallback: complete loading after delay
+      setTimeout(() => {
+        onNavigateToLogin();
+      }, 1000);
+    }
   };
 
   const animateBoxes = async () => {
@@ -78,10 +105,16 @@ export default function LoadingScreen({ onLoadingComplete, onNavigateToLogin }) 
   const createSlotMachineAnimation = (boxIndex) => {
     return new Promise(resolve => {
       let isRunning = true;
+      let animationCount = 0;
+      const maxAnimations = 20; // Limit animations to prevent infinite loops
 
       const animateCycle = () => {
-        if (!isRunning) return;
+        if (!isRunning || animationCount >= maxAnimations) {
+          isRunning = false;
+          return;
+        }
 
+        animationCount++;
         const randomNum = Math.floor(Math.random() * 9) + 1;
         
         setDisplayNumbers(prev => {
@@ -96,8 +129,9 @@ export default function LoadingScreen({ onLoadingComplete, onNavigateToLogin }) 
           useNativeDriver: true,
         }).start(() => {
           numberAnimations[boxIndex].setValue(0);
-          if (isRunning) {
-            setTimeout(animateCycle, 5);
+          if (isRunning && animationCount < maxAnimations) {
+            const timeoutRef = setTimeout(animateCycle, 50);
+            timeoutRefs.current.push(timeoutRef);
           }
         });
       };
@@ -106,9 +140,12 @@ export default function LoadingScreen({ onLoadingComplete, onNavigateToLogin }) 
       
       const animationRef = { 
         isRunning, 
-        stop: () => { isRunning = false; } 
+        stop: () => { 
+          isRunning = false; 
+        } 
       };
       
+      animationRefs.current.push(animationRef);
       resolve(animationRef);
     });
   };
@@ -123,16 +160,19 @@ export default function LoadingScreen({ onLoadingComplete, onNavigateToLogin }) 
       const runningAnimations = await animateSlotMachineNumbers();
       
       // Step 1: Check Authentication
+      console.log('Step 1: Checking Authentication...');
       const isAuthenticated = await AuthService.initialize();
       await updateStep(0, true, runningAnimations[0]);
 
       if (isAuthenticated) {
         // Step 2: Load User Data
+        console.log('Step 2: Loading User Data...');
         const currentUser = AuthService.getCurrentUser();
         setUserData(currentUser);
         await updateStep(1, true, runningAnimations[1]);
 
         // Step 3: Load Shop Items
+        console.log('Step 3: Loading Shop Items...');
         const shopItems = await fetchShopItems();
         setShopData(shopItems);
         await updateStep(2, true, runningAnimations[2]);
@@ -142,18 +182,22 @@ export default function LoadingScreen({ onLoadingComplete, onNavigateToLogin }) 
         console.log('Extracted theme skins:', themeSkins);
 
         // Step 4: Load User Skins
+        console.log('Step 4: Loading User Skins...');
         const skins = await fetchUserSkins();
         setUserSkins(skins);
         await updateStep(3, true, runningAnimations[3]);
 
         // Step 5: Initialize Game
+        console.log('Step 5: Initializing Game...');
         await updateStep(4, true, runningAnimations[4]);
 
         // Store data and complete
         setAppData({ user: currentUser, shop: shopItems, skins: skins, themeSkins: themeSkins });
         await new Promise(resolve => setTimeout(resolve, 500));
+        console.log('Loading complete, calling onLoadingComplete');
         onLoadingComplete({ user: currentUser, shop: shopItems, skins: skins, themeSkins: themeSkins });
       } else {
+        console.log('User not authenticated, navigating to login');
         await new Promise(resolve => setTimeout(resolve, 500));
         await updateStep(4, true, runningAnimations[4]);
         onNavigateToLogin();
@@ -167,6 +211,8 @@ export default function LoadingScreen({ onLoadingComplete, onNavigateToLogin }) 
   };
 
   const updateStep = async (stepIndex, completed, runningAnimation) => {
+    console.log(`Updating step ${stepIndex}, completed: ${completed}`);
+    
     setLoadingSteps(prev =>
       prev.map((step, index) =>
         index === stepIndex ? { ...step, completed } : step
@@ -263,22 +309,38 @@ export default function LoadingScreen({ onLoadingComplete, onNavigateToLogin }) 
   const fetchShopItems = async () => {
     try {
       const token = AuthService.getToken();
-      if (!token) return {};
+      if (!token) {
+        console.log('No token available, returning empty shop data');
+        return {};
+      }
 
+      console.log('Fetching shop items...');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const response = await fetch(`${config.API_BASE_URL}/shop/categories`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Shop items fetched successfully');
         return data.categories || {};
       }
+      console.log('Shop fetch response not ok:', response.status);
       return {};
     } catch (error) {
-      console.error('Error fetching shop items:', error);
+      if (error.name === 'AbortError') {
+        console.error('Shop fetch timeout after 10 seconds');
+      } else {
+        console.error('Error fetching shop items:', error);
+      }
       return {};
     }
   };
@@ -286,22 +348,38 @@ export default function LoadingScreen({ onLoadingComplete, onNavigateToLogin }) 
   const fetchUserSkins = async () => {
     try {
       const token = AuthService.getToken();
-      if (!token) return ['default'];
+      if (!token) {
+        console.log('No token available, returning default skins');
+        return ['default'];
+      }
 
+      console.log('Fetching user skins...');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const response = await fetch(`${config.API_BASE_URL}/shop/my-skins`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         const data = await response.json();
+        console.log('User skins fetched successfully');
         return data.availableSkins || ['default'];
       }
+      console.log('User skins fetch response not ok:', response.status);
       return ['default'];
     } catch (error) {
-      console.error('Error fetching user skins:', error);
+      if (error.name === 'AbortError') {
+        console.error('User skins fetch timeout after 10 seconds');
+      } else {
+        console.error('Error fetching user skins:', error);
+      }
       return ['default'];
     }
   };
