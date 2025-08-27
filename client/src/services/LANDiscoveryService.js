@@ -18,7 +18,7 @@ class LANDiscoveryService {
   }
 
   // Start hosting a game
-  async startHosting() {
+  async startHosting(roomId = null) {
     try {
       const networkInfo = await NetInfo.fetch();
       if (networkInfo.type !== 'wifi') {
@@ -30,7 +30,7 @@ class LANDiscoveryService {
         throw new Error('Could not determine local IP address');
       }
 
-      this.roomId = this.generateRoomId();
+      this.roomId = roomId || this.generateRoomId();
       this.isHost = true;
 
       console.log(`Started hosting room: ${this.roomId} on ${this.localIP}`);
@@ -58,6 +58,20 @@ class LANDiscoveryService {
       port: 8080,
       timestamp: Date.now()
     };
+  }
+
+  // Get local IP address
+  async getLocalIP() {
+    try {
+      const networkInfo = await NetInfo.fetch();
+      if (networkInfo.type === 'wifi' && networkInfo.details) {
+        return networkInfo.details.ipAddress;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting local IP:', error);
+      return null;
+    }
   }
 
   // Join a room using connection info
@@ -151,6 +165,29 @@ class LANDiscoveryService {
     return `${parts[0]}.${parts[1]}.${parts[2]}`;
   }
 
+  // Discover available rooms on the network
+  async discoverRooms() {
+    try {
+      const networkInfo = await NetInfo.fetch();
+      if (networkInfo.type !== 'wifi') {
+        return [];
+      }
+
+      // For now, return simulated rooms for testing
+      // In a real implementation, this would scan the network for available rooms
+      return [
+        {
+          roomId: 'DEMO123',
+          hostIP: '192.168.1.100',
+          timestamp: Date.now()
+        }
+      ];
+    } catch (error) {
+      console.error('Error discovering rooms:', error);
+      return [];
+    }
+  }
+
   // Send game message
   async sendGameMessage(message) {
     try {
@@ -217,6 +254,47 @@ class LANDiscoveryService {
 
   setOnMessageReceived(callback) {
     this.onMessageReceived = callback;
+  }
+
+  // Test method for debugging
+  async testLANFunctionality() {
+    try {
+      console.log('Testing LAN functionality...');
+      
+      // Test network status
+      const networkStatus = await this.getNetworkStatus();
+      console.log('Network status:', networkStatus);
+      
+      if (!networkStatus.isWifi) {
+        console.log('WiFi not available for LAN testing');
+        return { success: false, message: 'WiFi not available' };
+      }
+      
+      // Test room creation
+      const roomId = this.generateRoomId();
+      console.log('Generated room ID:', roomId);
+      
+      // Test hosting
+      const hostResult = await this.startHosting(roomId);
+      console.log('Host result:', hostResult);
+      
+      // Test connection info
+      const connectionInfo = this.getConnectionInfo();
+      console.log('Connection info:', connectionInfo);
+      
+      // Clean up
+      this.disconnect();
+      
+      return { 
+        success: true, 
+        roomId, 
+        connectionInfo,
+        networkStatus 
+      };
+    } catch (error) {
+      console.error('LAN test failed:', error);
+      return { success: false, error: error.message };
+    }
   }
 }
 

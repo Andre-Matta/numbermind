@@ -116,6 +116,24 @@ class PeerToPeerService {
     }
   }
 
+  // Send UDP broadcast (simulated for now)
+  async sendUDPBroadcast(ip, port, data) {
+    try {
+      // In a real implementation, this would send UDP packets
+      // For now, we'll simulate the broadcast
+      console.log(`Simulated UDP broadcast to ${ip}:${port}`, data);
+      
+      // Simulate network delay
+      setTimeout(() => {
+        // This would trigger the discovery on other devices
+        // For demo purposes, we'll just log it
+        console.log(`Broadcast sent to ${ip}:${port}`);
+      }, Math.random() * 100);
+    } catch (error) {
+      console.error('UDP broadcast error:', error);
+    }
+  }
+
   // Start discovering available rooms
   async startDiscovery() {
     try {

@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import NetworkService from '../services/NetworkService';
+import LANDiscoveryService from '../services/LANDiscoveryService';
 
 
 export default function MultiplayerLobby({ onGameStart, onBack }) {
@@ -21,6 +22,8 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
   const [roomId, setRoomId] = useState('');
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
+  const [isDiscovering, setIsDiscovering] = useState(false);
+  const [availableRooms, setAvailableRooms] = useState([]);
 
 
   useEffect(() => {
@@ -152,6 +155,24 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
     }
   };
 
+  const startLANDiscovery = async () => {
+    if (!NetworkService.isConnected()) {
+      Alert.alert('Error', 'Not connected to server');
+      return;
+    }
+    setIsDiscovering(true);
+    try {
+      const rooms = await LANDiscoveryService.discoverRooms();
+      setAvailableRooms(rooms);
+      if (rooms.length === 0) {
+        Alert.alert('No LAN Rooms Found', 'No LAN rooms found on your network. Create one to play!');
+      }
+    } catch (error) {
+      Alert.alert('LAN Discovery Error', error.message);
+    } finally {
+      setIsDiscovering(false);
+    }
+  };
 
 
   const getStatusColor = () => {
@@ -190,6 +211,62 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
           <View style={[styles.statusIndicator, { backgroundColor: getStatusColor() }]} />
           <Text style={styles.statusText}>{getStatusText()}</Text>
         </View>
+
+
+
+        {/* LAN Section */}
+        {NetworkService.isConnected() && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>LAN Multiplayer</Text>
+            <Text style={styles.sectionSubtitle}>Play with friends on the same WiFi network</Text>
+            
+            {/* Test LAN Button */}
+            <TouchableOpacity
+              style={[styles.button, styles.testButton]}
+              onPress={async () => {
+                try {
+                  const result = await LANDiscoveryService.testLANFunctionality();
+                  Alert.alert(
+                    'LAN Test Result',
+                    result.success 
+                      ? `Success!\nRoom ID: ${result.roomId}\nIP: ${result.connectionInfo.hostIP}`
+                      : `Failed: ${result.message || result.error}`
+                  );
+                } catch (error) {
+                  Alert.alert('Test Error', error.message);
+                }
+              }}
+            >
+              <Text style={styles.buttonText}>Test LAN Functionality</Text>
+            </TouchableOpacity>
+            
+            {/* Available LAN Rooms */}
+            <View style={styles.lanRoomsContainer}>
+              <Text style={styles.lanRoomsTitle}>Available LAN Rooms:</Text>
+              {isDiscovering ? (
+                <View style={styles.discoveringContainer}>
+                  <ActivityIndicator color="#4a90e2" size="small" />
+                  <Text style={styles.discoveringText}>Discovering rooms...</Text>
+                </View>
+              ) : availableRooms.length > 0 ? (
+                <ScrollView style={styles.roomsList}>
+                  {availableRooms.map((room, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.roomItem}
+                      onPress={() => setRoomId(room.roomId)}
+                    >
+                      <Text style={styles.roomIdText}>Room: {room.roomId}</Text>
+                      <Text style={styles.roomHostText}>Host: {room.hostIP}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              ) : (
+                <Text style={styles.noRoomsText}>No LAN rooms found. Create a room to start!</Text>
+              )}
+            </View>
+          </View>
+        )}
 
 
 
@@ -321,6 +398,12 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     textAlign: 'center',
   },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#ccc',
+    textAlign: 'center',
+    marginBottom: 15,
+  },
   inputContainer: {
     marginBottom: 15,
   },
@@ -358,8 +441,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#28a745',
     marginTop: 15,
   },
-
-
+  testButton: {
+    backgroundColor: '#007bff',
+    marginBottom: 15,
+  },
   buttonText: {
     color: '#fff',
     fontWeight: 'bold',
@@ -368,6 +453,52 @@ const styles = StyleSheet.create({
   roomActions: {
     alignItems: 'center',
   },
-
+  lanRoomsContainer: {
+    marginTop: 15,
+  },
+  lanRoomsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 10,
+  },
+  roomsList: {
+    maxHeight: 150,
+  },
+  roomItem: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  roomIdText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  roomHostText: {
+    fontSize: 14,
+    color: '#ccc',
+    marginTop: 5,
+  },
+  discoveringContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  discoveringText: {
+    color: '#4a90e2',
+    fontSize: 16,
+    marginLeft: 10,
+  },
+  noRoomsText: {
+    fontSize: 16,
+    color: '#ccc',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
 
 }); 
