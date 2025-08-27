@@ -30,7 +30,7 @@ import {
 
 const { width, height } = Dimensions.get('window');
 
-export default function LocalGameScreen({ gameData, onBack }) {
+export default function LocalGameScreen({ gameData, onBack, onNewGame }) {
   const { userSkins, themeSkins } = useData();
   const [currentGuess, setCurrentGuess] = useState(['', '', '', '', '']);
   const [currentPlayer, setCurrentPlayer] = useState(1);
@@ -369,7 +369,7 @@ export default function LocalGameScreen({ gameData, onBack }) {
             <Text style={styles.statsText}>Player 2 Guesses: {guesses.player2.length}</Text>
           </View>
 
-          <TouchableOpacity style={styles.newGameButton} onPress={onBack}>
+          <TouchableOpacity style={styles.newGameButton} onPress={onNewGame}>
             <Text style={styles.newGameButtonText}>New Game</Text>
           </TouchableOpacity>
         </View>

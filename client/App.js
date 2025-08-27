@@ -72,6 +72,11 @@ function AppContent() {
     setGameData(null); // Clear game data when returning to menu
   };
 
+  const handleNewGame = () => {
+    setCurrentScreen('localSetup');
+    setGameData(null); // Clear game data when starting new game
+  };
+
   const handleGameStart = (gameData) => {
     setCurrentScreen('local');
     // Store game data for GameScreen
@@ -140,6 +145,7 @@ function AppContent() {
         return (
           <LocalGameScreen
             onBack={handleBackToMenu}
+            onNewGame={handleNewGame}
             gameData={gameData}
           />
         );
