@@ -370,22 +370,26 @@ const setupSocketIO = (server) => {
         }
         
         // Check if player has already submitted a number
-        if (game.playerNumbers[socket.userId]) {
+        if (game.playerNumbers.has(socket.userId)) {
           console.log(`⚠️ Player ${socket.user.username} already submitted a number in room ${roomId}`);
           return callback({ success: false, error: 'You have already submitted a number' });
         }
         
-        game.playerNumbers[socket.userId] = playerNumber;
+        game.playerNumbers.set(socket.userId, playerNumber);
+        console.log(`✅ Added number for player ${socket.user.username}: ${playerNumber}`);
 
         console.log(`🔢 Player ${socket.user.username} submitted number in room ${roomId}`);
         console.log(`📊 Current playerNumbers:`, game.playerNumbers);
-        console.log(`👥 Total players: ${game.players.length}, Numbers submitted: ${Object.keys(game.playerNumbers).length}`);
+        
+        // Fix: Use proper Map methods for Mongoose Map objects
+        const actualPlayerNumbersCount = game.playerNumbers.size || 0;
+        console.log(`👥 Total players: ${game.players.length}, Numbers submitted: ${actualPlayerNumbersCount}`);
         console.log(`🔍 Player IDs in game:`, game.players);
-        console.log(`🔍 Player IDs with numbers:`, Object.keys(game.playerNumbers));
+        console.log(`🔍 Player IDs with numbers:`, Array.from(game.playerNumbers.keys()));
         console.log(`🔍 Player ${socket.user.username} ID:`, socket.userId);
 
         // Check if both players have submitted their numbers
-        if (Object.keys(game.playerNumbers).length === 2) {
+        if (actualPlayerNumbersCount === 2) {
           console.log(`🎮 Both players submitted numbers! Starting game in room ${roomId}`);
           game.gameState = 'playing';
           game.currentTurn = game.players[0];
@@ -475,7 +479,8 @@ const setupSocketIO = (server) => {
         }
 
         // Calculate feedback
-        const opponentNumber = game.playerNumbers[game.players.find(p => p !== socket.userId)];
+        const opponentId = game.players.find(p => p !== socket.userId);
+        const opponentNumber = game.playerNumbers.get(opponentId);
         if (!opponentNumber) {
           return callback({ success: false, error: 'Opponent number not found' });
         }
