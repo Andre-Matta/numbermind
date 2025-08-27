@@ -1,8 +1,11 @@
 const io = require('socket.io-client');
 
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
+
 // Test configuration
-const SERVER_URL = 'http://localhost:5000';
-const TEST_TOKEN = 'test-token'; // You'll need to replace this with a real token
+const SERVER_URL = process.env.SERVER_URL;
+const TEST_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFuZHlhZGVsMzlAZ21haWwuY29tIiwiaWF0IjoxNzU2MjQ3OTg1LCJleHAiOjE3NTYzMzQzODV9.N6tNUadhf7pKLgSYEVp5YX8iVye7_vqOCoEC_ZmaQYQ";
 
 // Test data
 let roomId = null;

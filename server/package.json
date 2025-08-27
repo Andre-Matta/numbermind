@@ -12,7 +12,8 @@
     "populate-shop": "node scripts/populateShop.js",
     "test-users": "node scripts/testUsers.js",
     "test-leaderboard": "node scripts/testLeaderboard.js",
-    "test-auth": "node scripts/testAuth.js"
+    "test-auth": "node scripts/testAuth.js",
+    "test-multiplayer": "node test-multiplayer.js"
   },
   "dependencies": {
     "axios": "^1.6.0",
@@ -33,6 +34,7 @@
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.7",
     "socket.io": "^4.7.2",
+    "socket.io-client": "^4.7.2",
     "stripe": "^13.6.0"
   },
   "devDependencies": {
