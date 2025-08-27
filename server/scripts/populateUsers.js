@@ -75,8 +75,8 @@ const sampleUsers = [
     }
   },
   {
-    username: 'NumberMind_Pro',
-    email: 'pro@numbermind.com',
+    username: 'lucaas',
+    email: 'malakayman9111@gmail.com',
     password: 'Password123',
     coins: 5000,
     gameStats: {
