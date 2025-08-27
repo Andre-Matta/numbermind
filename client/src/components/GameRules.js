@@ -1,100 +1,110 @@
 import React from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { ResponsiveWrapper, ResponsiveContainer, ResponsiveCard } from './ResponsiveWrapper';
+import { Heading2, Heading3, BodyText, CaptionText } from './ResponsiveText';
+import { 
+  scale,
+  getResponsivePadding,
+  getResponsiveFontSize,
+  getResponsiveButtonSize,
+  spacing,
+  borderRadius
+} from '../utils/responsiveUtils';
 
 export default function GameRules({ onClose }) {
   return (
     <View style={styles.overlay}>
-      <View style={styles.modal}>
-        <View style={styles.header}>
-          <Text style={styles.title}>How to Play</Text>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Ionicons name="close" size={24} color="#fff" />
-          </TouchableOpacity>
-        </View>
-        
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Objective</Text>
-            <Text style={styles.ruleText}>
-              Be the first player to correctly guess your opponent's secret 5-digit number!
-            </Text>
+      <ResponsiveContainer maxWidth={95}>
+        <ResponsiveCard padding={24}>
+          <View style={styles.header}>
+            <Heading2>How to Play</Heading2>
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+              <Ionicons name="close" size={getResponsiveFontSize(24)} color="#fff" />
+            </TouchableOpacity>
           </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Setup</Text>
-            <Text style={styles.ruleText}>
-              • Each player secretly chooses a 5-digit number (0-9, digits can repeat)
-            </Text>
-            <Text style={styles.ruleText}>
-              • Use the auto-fill feature for random numbers or enter your own
-            </Text>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Gameplay</Text>
-            <Text style={styles.ruleText}>
-              • Players take turns guessing the opponent's number
-            </Text>
-            <Text style={styles.ruleText}>
-              • After each guess, the opponent provides feedback
-            </Text>
-            <Text style={styles.ruleText}>
-              • Use the feedback to make better guesses on your next turn
-            </Text>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Game Modes</Text>
-            
-            <View style={styles.modeSection}>
-              <Text style={styles.modeTitle}>Standard Mode</Text>
-              <Text style={styles.ruleText}>
-                • Shows exact matches (correct digit in correct position)
-              </Text>
-              <Text style={styles.ruleText}>
-                • Shows misplaced matches (correct digit in wrong position)
-              </Text>
+          
+          <ResponsiveWrapper scrollable>
+            <View style={styles.section}>
+              <Heading3>Objective</Heading3>
+              <BodyText>
+                Be the first player to correctly guess your opponent's secret 5-digit number!
+              </BodyText>
             </View>
 
-            <View style={styles.modeSection}>
-              <Text style={styles.modeTitle}>Hard Mode</Text>
-              <Text style={styles.ruleText}>
-                • Only shows total number of correct digits
-              </Text>
-              <Text style={styles.ruleText}>
-                • No information about placement
-              </Text>
+            <View style={styles.section}>
+              <Heading3>Setup</Heading3>
+              <BodyText>
+                • Each player secretly chooses a 5-digit number (0-9, digits can repeat)
+              </BodyText>
+              <BodyText>
+                • Use the auto-fill feature for random numbers or enter your own
+              </BodyText>
             </View>
-          </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Winning</Text>
-            <Text style={styles.ruleText}>
-              The first player to correctly guess the opponent's number wins!
-            </Text>
-          </View>
+            <View style={styles.section}>
+              <Heading3>Gameplay</Heading3>
+              <BodyText>
+                • Players take turns guessing the opponent's number
+              </BodyText>
+              <BodyText>
+                • After each guess, the opponent provides feedback
+              </BodyText>
+              <BodyText>
+                • Use the feedback to make better guesses on your next turn
+              </BodyText>
+            </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tips</Text>
-            <Text style={styles.ruleText}>
-              • Start with common patterns like 12345 or 00000
-            </Text>
-            <Text style={styles.ruleText}>
-              • Use feedback to eliminate possibilities
-            </Text>
-            <Text style={styles.ruleText}>
-              • Think logically about digit placement
-            </Text>
-          </View>
-        </ScrollView>
-      </View>
+            <View style={styles.section}>
+              <Heading3>Game Modes</Heading3>
+              
+              <View style={styles.modeSection}>
+                <BodyText weight="600">Standard Mode</BodyText>
+                <BodyText>
+                  • Shows exact matches (correct digit in correct position)
+                </BodyText>
+                <BodyText>
+                  • Shows misplaced matches (correct digit in wrong position)
+                </BodyText>
+              </View>
+
+              <View style={styles.modeSection}>
+                <BodyText weight="600">Hard Mode</BodyText>
+                <BodyText>
+                  • Only shows total number of correct digits
+                </BodyText>
+                <BodyText>
+                  • No information about placement
+                </BodyText>
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <Heading3>Winning</Heading3>
+              <BodyText>
+                The first player to correctly guess the opponent's number wins!
+              </BodyText>
+            </View>
+
+            <View style={styles.section}>
+              <Heading3>Tips</Heading3>
+              <BodyText>
+                • Start with common patterns like 12345 or 00000
+              </BodyText>
+              <BodyText>
+                • Use feedback to eliminate possibilities
+              </BodyText>
+              <BodyText>
+                • Think logically about digit placement
+              </BodyText>
+            </View>
+          </ResponsiveWrapper>
+        </ResponsiveCard>
+      </ResponsiveContainer>
     </View>
   );
 }
@@ -111,61 +121,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 1000,
   },
-  modal: {
-    backgroundColor: '#1a1a2e',
-    borderRadius: 20,
-    padding: 20,
-    margin: 20,
-    maxHeight: '80%',
-    width: '90%',
-    borderWidth: 2,
-    borderColor: '#4a90e2',
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
-    paddingBottom: 15,
+    marginBottom: spacing.lg,
+    paddingBottom: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    flex: 1,
-    textAlign: 'center',
-  },
   closeButton: {
-    padding: 5,
-  },
-  content: {
-    flex: 1,
+    padding: scale(5),
   },
   section: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#4a90e2',
-    marginBottom: 10,
-  },
-  ruleText: {
-    fontSize: 14,
-    color: '#fff',
-    lineHeight: 20,
-    marginBottom: 5,
+    marginBottom: spacing.lg,
   },
   modeSection: {
-    marginBottom: 15,
-    paddingLeft: 15,
-  },
-  modeTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffc107',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
+    paddingLeft: spacing.sm,
   },
 }); 

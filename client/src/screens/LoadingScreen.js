@@ -3,13 +3,24 @@ import {
   View,
   Text,
   StyleSheet,
-  Dimensions,
   Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import config from '../config/config';
 import AuthService from '../services/AuthService';
 import { useData } from '../context/DataContext';
+import {
+  scale,
+  verticalScale,
+  getResponsivePadding,
+  getResponsiveFontSize,
+  getResponsiveButtonSize,
+  responsiveWidth,
+  responsiveHeight,
+  spacing,
+  borderRadius,
+  getScreenDimensions
+} from '../utils/responsiveUtils';
 
 export default function LoadingScreen({ onLoadingComplete, onNavigateToLogin }) {
   const { setAppData } = useData();
@@ -486,52 +497,54 @@ const styles = StyleSheet.create({
   },
   content: {
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: getResponsivePadding(20),
+    width: '100%',
   },
   title: {
-    fontSize: 32,
+    fontSize: getResponsiveFontSize(20),
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 60,
+    marginBottom: verticalScale(30),
     textAlign: 'center',
   },
   loadingContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 50,
-    paddingHorizontal: 20,
+    marginBottom: verticalScale(25),
+    paddingHorizontal: getResponsivePadding(8),
   },
   inputBoxContainer: {
     alignItems: 'center',
-    marginHorizontal: 15,
+    marginHorizontal: scale(2),
   },
   inputBox: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    borderWidth: 3,
+    width: scale(28),
+    height: scale(28),
+    borderRadius: borderRadius.sm,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 1,
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
     overflow: 'hidden',
   },
   inputBoxNumber: {
-    fontSize: 24,
+    fontSize: getResponsiveFontSize(14),
     fontWeight: 'bold',
     color: '#fff',
   },
   stepText: {
-    fontSize: 20,
+    fontSize: getResponsiveFontSize(14),
     color: '#fff',
     textAlign: 'center',
     fontWeight: '600',
-    minHeight: 30,
+    minHeight: verticalScale(20),
+    paddingHorizontal: getResponsivePadding(12),
   },
 });

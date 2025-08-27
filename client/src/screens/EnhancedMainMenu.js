@@ -14,6 +14,17 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import FloatingBubbles from '../components/FloatingBubbles';
 import { useAuth } from '../context/AuthContext';
+import { 
+  scale, 
+  responsiveWidth, 
+  responsiveHeight,
+  getResponsivePadding,
+  getResponsiveFontSize,
+  getResponsiveButtonSize,
+  getResponsiveContainerWidth,
+  spacing,
+  borderRadius
+} from '../utils/responsiveUtils';
 
 const { width, height } = Dimensions.get('window');
 
@@ -275,35 +286,36 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 30,
+    paddingTop: getResponsivePadding(60),
+    paddingHorizontal: getResponsivePadding(20),
+    paddingBottom: getResponsivePadding(30),
     position: 'relative',
   },
   logoutButton: {
     position: 'absolute',
-    top: 60,
-    right: 20,
+    top: getResponsivePadding(60),
+    right: getResponsivePadding(20),
     zIndex: 10,
-    padding: 8,
+    padding: scale(8),
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 20,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   playerInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: spacing.lg,
+    flexWrap: 'wrap',
   },
   avatarContainer: {
     position: 'relative',
-    marginRight: 15,
+    marginRight: spacing.sm,
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: getResponsiveButtonSize(60),
+    height: getResponsiveButtonSize(60),
+    borderRadius: borderRadius.round,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -312,11 +324,11 @@ const styles = StyleSheet.create({
   },
   levelBadge: {
     position: 'absolute',
-    bottom: -5,
-    right: -5,
-    width: 25,
-    height: 25,
-    borderRadius: 12.5,
+    bottom: -scale(5),
+    right: -scale(5),
+    width: scale(25),
+    height: scale(25),
+    borderRadius: scale(12.5),
     backgroundColor: '#ff6b6b',
     justifyContent: 'center',
     alignItems: 'center',
@@ -325,43 +337,47 @@ const styles = StyleSheet.create({
   },
   levelText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: getResponsiveFontSize(12),
     fontWeight: 'bold',
   },
   playerDetails: {
     flex: 1,
+    minWidth: responsiveWidth(40),
   },
   playerName: {
-    fontSize: 24,
+    fontSize: getResponsiveFontSize(24),
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 5,
+    marginBottom: spacing.xs,
   },
   rankContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   rankDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 8,
+    width: scale(12),
+    height: scale(12),
+    borderRadius: scale(6),
+    marginRight: scale(8),
   },
   rankText: {
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     color: '#fff',
     fontWeight: '600',
   },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: 20,
+    marginBottom: spacing.lg,
+    flexWrap: 'wrap',
   },
   statItem: {
     alignItems: 'center',
+    minWidth: responsiveWidth(25),
+    marginBottom: spacing.sm,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: getResponsiveFontSize(20),
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 5,
