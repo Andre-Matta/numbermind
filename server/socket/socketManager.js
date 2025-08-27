@@ -367,10 +367,10 @@ const setupSocketIO = (server) => {
 
         console.log(`🔢 Player ${socket.user.username} submitted number in room ${roomId}`);
         console.log(`📊 Current playerNumbers:`, game.playerNumbers);
-        console.log(`👥 Total players: ${game.players.length}, Numbers submitted: ${Object.keys(game.playerNumbers).length}`);
+        console.log(`👥 Total players: ${game.players.length}, Numbers submitted: ${game.playerNumbers.length}`);
 
         // Check if both players have submitted their numbers
-        if (Object.keys(game.playerNumbers).length === 2) {
+        if (game.playerNumbers.length === 2) {
           console.log(`🎮 Both players submitted numbers! Starting game in room ${roomId}`);
           game.gameState = 'playing';
           game.currentTurn = game.players[0];
