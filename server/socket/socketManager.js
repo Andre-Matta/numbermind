@@ -48,7 +48,7 @@ const setupSocketIO = (server) => {
   });
 
   io.on('connection', (socket) => {
-    console.log(`🔌 User connected: ${socket.user.username} (${socket.userId})`);
+    console.log(`🔌 User connected: ${socket.user.username} (${socket.userId}) - Socket ID: ${socket.id}`);
     
     // Store connection
     activeConnections.set(socket.id, socket.userId);
@@ -359,18 +359,33 @@ const setupSocketIO = (server) => {
           return callback({ success: false, error: 'Not in this room' });
         }
 
+        // Check if game is already in progress
+        if (game.gameState === 'playing') {
+          return callback({ success: false, error: 'Game is already in progress' });
+        }
+        
         // Store the player's secret number
         if (!game.playerNumbers) {
           game.playerNumbers = {};
         }
+        
+        // Check if player has already submitted a number
+        if (game.playerNumbers[socket.userId]) {
+          console.log(`⚠️ Player ${socket.user.username} already submitted a number in room ${roomId}`);
+          return callback({ success: false, error: 'You have already submitted a number' });
+        }
+        
         game.playerNumbers[socket.userId] = playerNumber;
 
         console.log(`🔢 Player ${socket.user.username} submitted number in room ${roomId}`);
         console.log(`📊 Current playerNumbers:`, game.playerNumbers);
-        console.log(`👥 Total players: ${game.players.length}, Numbers submitted: ${game.playerNumbers.length}`);
+        console.log(`👥 Total players: ${game.players.length}, Numbers submitted: ${Object.keys(game.playerNumbers).length}`);
+        console.log(`🔍 Player IDs in game:`, game.players);
+        console.log(`🔍 Player IDs with numbers:`, Object.keys(game.playerNumbers));
+        console.log(`🔍 Player ${socket.user.username} ID:`, socket.userId);
 
         // Check if both players have submitted their numbers
-        if (game.playerNumbers.length === 2) {
+        if (Object.keys(game.playerNumbers).length === 2) {
           console.log(`🎮 Both players submitted numbers! Starting game in room ${roomId}`);
           game.gameState = 'playing';
           game.currentTurn = game.players[0];
@@ -628,8 +643,8 @@ const setupSocketIO = (server) => {
     });
 
     // Handle disconnection
-    socket.on('disconnect', async () => {
-      console.log(`🔌 User disconnected: ${socket.user.username} (${socket.userId})`);
+    socket.on('disconnect', () => {
+      console.log(`🔌 User disconnected: ${socket.user.username} (${socket.userId}) - Socket ID: ${socket.id}`);
       
       // Remove from active connections
       activeConnections.delete(socket.id);

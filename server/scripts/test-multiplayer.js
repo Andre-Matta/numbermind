@@ -127,6 +127,7 @@ async function testMultiplayer() {
     console.log('\n📱 Test 3: Both players submit secret numbers');
     
     // Player 1 submits number
+    console.log('🔢 Player 1 submitting number: 12345');
     await new Promise((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error('Submit number timeout')), 10000);
       
@@ -136,15 +137,17 @@ async function testMultiplayer() {
       }, (response) => {
         clearTimeout(timeout);
         if (response && response.success) {
-          console.log('✅ Player 1 submitted number');
+          console.log('✅ Player 1 submitted number successfully');
           resolve();
         } else {
+          console.log('❌ Player 1 failed to submit number:', response?.error);
           reject(new Error(response?.error || 'Failed to submit number'));
         }
       });
     });
 
     // Player 2 submits number
+    console.log('🔢 Player 2 submitting number: 67890');
     await new Promise((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error('Submit number timeout')), 10000);
       
@@ -154,9 +157,10 @@ async function testMultiplayer() {
       }, (response) => {
         clearTimeout(timeout);
         if (response && response.success) {
-          console.log('✅ Player 2 submitted number');
+          console.log('✅ Player 2 submitted number successfully');
           resolve();
         } else {
+          console.log('❌ Player 2 failed to submit number:', response?.error);
           reject(new Error(response?.error || 'Failed to submit number'));
         }
       });
