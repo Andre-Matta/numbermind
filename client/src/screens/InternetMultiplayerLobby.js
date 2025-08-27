@@ -15,15 +15,11 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import NetworkService from '../services/NetworkService';
 
-
-
-export default function MultiplayerLobby({ onGameStart, onBack }) {
-  const [connectionStatus, setConnectionStatus] = useState('connecting'); // disconnected, connecting, connected
+export default function InternetMultiplayerLobby({ onGameStart, onBack }) {
+  const [connectionStatus, setConnectionStatus] = useState('connecting');
   const [roomId, setRoomId] = useState('');
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
-
-
 
   useEffect(() => {
     autoConnectToServer();
@@ -34,7 +30,7 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
 
   const autoConnectToServer = async () => {
     try {
-      console.log('Auto-connecting to server...');
+      console.log('Auto-connecting to internet server...');
       await NetworkService.connect();
       setConnectionStatus('connected');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -42,52 +38,43 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
       setConnectionStatus('disconnected');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       
-      let errorMessage = 'Failed to connect to server';
+      let errorMessage = 'Failed to connect to internet server';
       if (error.message) {
         errorMessage = error.message;
       } else if (error.type === 'timeout') {
-        errorMessage = 'Connection timed out. Server might be sleeping or unreachable.';
+        errorMessage = 'Connection timed out. Internet server might be sleeping or unreachable.';
       } else if (error.description) {
         errorMessage = error.description;
       }
       
-      Alert.alert('Connection Failed', errorMessage);
-      console.error('Connection error:', error);
+      Alert.alert('Internet Connection Failed', errorMessage);
+      console.error('Internet Connection error:', error);
     }
   };
 
-
-
-
-
-  const createRoom = async () => {
+  const createInternetRoom = async () => {
     if (!NetworkService.isConnected()) {
-      Alert.alert('Error', 'Not connected to server');
+      Alert.alert('Error', 'Not connected to internet server');
       return;
     }
 
     setIsCreatingRoom(true);
     try {
-      console.log('Creating room...');
+      console.log('Creating internet room...');
       console.log('NetworkService connection status:', NetworkService.isConnected());
       console.log('Socket connected:', NetworkService.socket?.connected);
       
       const response = await NetworkService.createRoom();
-      console.log('Room created successfully:', response);
+      console.log('Internet room created successfully:', response);
       
       setRoomId(response.roomId);
       setIsCreatingRoom(false);
       
-      // Note: Room creator is automatically added to the room on the server
-      // No need to join again
-      console.log('Room creator automatically in room');
-      
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
-      // Show room created with copy option
       Alert.alert(
-        'Room Created!',
-        `Room ID: ${response.roomId}\n\nShare this code with your friend to start playing!`,
+        'Internet Room Created!',
+        `Room ID: ${response.roomId}\n\nShare this code with your friend anywhere in the world!`,
         [
           { 
             text: 'Copy Code', 
@@ -104,31 +91,31 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
           { 
             text: 'Start Game', 
             onPress: () => {
-              onGameStart(response.roomId);
+              onGameStart(response.roomId, 'internet');
             }
           },
           { text: 'OK' }
         ]
       );
     } catch (error) {
-      console.error('Error creating room:', error);
+      console.error('Error creating internet room:', error);
       setIsCreatingRoom(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       
-      let errorMessage = 'Failed to create room';
+      let errorMessage = 'Failed to create internet room';
       if (error.message) {
         errorMessage = error.message;
       } else if (error.type === 'timeout') {
-        errorMessage = 'Request timed out. Server might be sleeping or unreachable.';
+        errorMessage = 'Request timed out. Internet server might be sleeping or unreachable.';
       }
       
       Alert.alert('Error', errorMessage);
     }
   };
 
-  const joinRoom = async () => {
+  const joinInternetRoom = async () => {
     if (!NetworkService.isConnected()) {
-      Alert.alert('Error', 'Not connected to server');
+      Alert.alert('Error', 'Not connected to internet server');
       return;
     }
 
@@ -141,21 +128,17 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
     try {
       await NetworkService.joinRoom(roomId.trim());
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Success', 'Joined room successfully!');
-      // Navigate to multiplayer game screen
+      Alert.alert('Success', 'Joined internet room successfully!');
       setTimeout(() => {
-        onGameStart(roomId.trim());
+        onGameStart(roomId.trim(), 'internet');
       }, 1000);
     } catch (error) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Error', error.message || 'Failed to join room');
+      Alert.alert('Error', error.message || 'Failed to join internet room');
     } finally {
       setIsJoiningRoom(false);
     }
   };
-
-
-
 
   const getStatusColor = () => {
     switch (connectionStatus) {
@@ -167,9 +150,9 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
 
   const getStatusText = () => {
     switch (connectionStatus) {
-      case 'connected': return 'Connected';
-      case 'connecting': return 'Connecting...';
-      default: return 'Disconnected';
+      case 'connected': return 'Internet Connected';
+      case 'connecting': return 'Connecting to Internet...';
+      default: return 'Internet Disconnected';
     }
   };
 
@@ -184,7 +167,7 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.title}>Legacy Multiplayer</Text>
+          <Text style={styles.title}>Internet Multiplayer</Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -194,39 +177,44 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
           <Text style={styles.statusText}>{getStatusText()}</Text>
         </View>
 
-
-
-        {/* Legacy Multiplayer Section - This component is deprecated */}
+        {/* Internet Multiplayer Section */}
         {NetworkService.isConnected() && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Legacy Multiplayer</Text>
-            <Text style={styles.sectionSubtitle}>This component is deprecated. Please use the new separated LAN and Internet multiplayer options from the main menu.</Text>
-            <View style={styles.deprecatedInfo}>
-              <Ionicons name="information-circle" size={24} color="#ffc107" />
-              <Text style={styles.deprecatedText}>
-                The multiplayer functionality has been split into separate LAN and Internet options for better user experience.
-              </Text>
+            <Text style={styles.sectionTitle}>Global Multiplayer</Text>
+            <Text style={styles.sectionSubtitle}>Play with friends anywhere in the world</Text>
+            
+            <View style={styles.infoContainer}>
+              <View style={styles.infoItem}>
+                <Ionicons name="globe" size={24} color="#4a90e2" />
+                <Text style={styles.infoText}>Global reach</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Ionicons name="wifi" size={24} color="#4a90e2" />
+                <Text style={styles.infoText}>Internet connection required</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Ionicons name="people" size={24} color="#4a90e2" />
+                <Text style={styles.infoText}>Play with anyone, anywhere</Text>
+              </View>
             </View>
           </View>
         )}
 
-
-
         {/* Room Management */}
         {connectionStatus === 'connected' && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Room Management</Text>
+            <Text style={styles.sectionTitle}>Internet Room Management</Text>
             
             <View style={styles.roomActions}>
               <TouchableOpacity
                 style={[styles.button, styles.createButton]}
-                onPress={createRoom}
+                onPress={createInternetRoom}
                 disabled={isCreatingRoom}
               >
                 {isCreatingRoom ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={styles.buttonText}>Create Room</Text>
+                  <Text style={styles.buttonText}>Create Internet Room</Text>
                 )}
               </TouchableOpacity>
 
@@ -245,13 +233,13 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
 
               <TouchableOpacity
                 style={[styles.button, styles.joinButton]}
-                onPress={joinRoom}
+                onPress={joinInternetRoom}
                 disabled={isJoiningRoom || !roomId.trim()}
               >
                 {isJoiningRoom ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={styles.buttonText}>Join Room</Text>
+                  <Text style={styles.buttonText}>Join Internet Room</Text>
                 )}
               </TouchableOpacity>
 
@@ -259,20 +247,27 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
               {roomId && (
                 <TouchableOpacity
                   style={[styles.button, styles.startButton]}
-                  onPress={() => onGameStart(roomId)}
+                  onPress={() => onGameStart(roomId, 'internet')}
                 >
-                  <Text style={styles.buttonText}>Start Game</Text>
+                  <Text style={styles.buttonText}>Start Internet Game</Text>
                 </TouchableOpacity>
               )}
             </View>
           </View>
         )}
 
-
-
-
-
-
+        {/* Connection Tips */}
+        {connectionStatus === 'disconnected' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Connection Tips</Text>
+            <View style={styles.tipsContainer}>
+              <Text style={styles.tipText}>• Ensure you have a stable internet connection</Text>
+              <Text style={styles.tipText}>• Check if the server is online</Text>
+              <Text style={styles.tipText}>• Try refreshing the connection</Text>
+              <Text style={styles.tipText}>• Contact support if issues persist</Text>
+            </View>
+          </View>
+        )}
       </ScrollView>
     </LinearGradient>
   );
@@ -346,6 +341,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 15,
   },
+  infoContainer: {
+    marginTop: 15,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    paddingHorizontal: 10,
+  },
+  infoText: {
+    fontSize: 16,
+    color: '#fff',
+    marginLeft: 15,
+    fontWeight: '500',
+  },
   inputContainer: {
     marginBottom: 15,
   },
@@ -383,7 +393,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#28a745',
     marginTop: 15,
   },
-
   buttonText: {
     color: '#fff',
     fontWeight: 'bold',
@@ -392,23 +401,13 @@ const styles = StyleSheet.create({
   roomActions: {
     alignItems: 'center',
   },
-
-  deprecatedInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 15,
-    padding: 15,
-    backgroundColor: 'rgba(255, 193, 7, 0.1)',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 193, 7, 0.3)',
+  tipsContainer: {
+    marginTop: 10,
   },
-  deprecatedText: {
+  tipText: {
     fontSize: 14,
-    color: '#ffc107',
-    marginLeft: 10,
-    flex: 1,
+    color: '#ccc',
+    marginBottom: 8,
     lineHeight: 20,
   },
-
-}); 
+});

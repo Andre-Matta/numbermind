@@ -6,8 +6,11 @@ import { DataProvider, useData } from './src/context/DataContext';
 import LoadingScreen from './src/screens/LoadingScreen';
 import EnhancedMainMenu from './src/screens/EnhancedMainMenu';
 import LocalGameScreen from './src/screens/LocalGameScreen';
-import MultiplayerLobby from './src/screens/MultiplayerLobby';
+import MultiplayerSelectionScreen from './src/screens/MultiplayerSelectionScreen';
+import LANLobby from './src/screens/LANLobby';
+import InternetMultiplayerLobby from './src/screens/InternetMultiplayerLobby';
 import MultiplayerGameScreen from './src/screens/MultiplayerGameScreen';
+import OfflineLANGameScreen from './src/screens/OfflineLANGameScreen';
 import LocalGameSetup from './src/components/LocalGameSetup';
 import GameRules from './src/components/GameRules';
 import RankedLobby from './src/components/RankedLobby';
@@ -21,6 +24,7 @@ function AppContent() {
   const [showRules, setShowRules] = useState(false);
   const [gameData, setGameData] = useState(null);
   const [multiplayerRoomId, setMultiplayerRoomId] = useState(null);
+  const [multiplayerType, setMultiplayerType] = useState(null); // 'lan' or 'internet'
   const { user, isAuthenticated, isLoading } = useAuth();
   const { isDataLoaded } = useData();
 
@@ -64,7 +68,15 @@ function AppContent() {
   };
 
   const handleMultiplayer = () => {
-    setCurrentScreen('multiplayer');
+    setCurrentScreen('multiplayerSelection');
+  };
+
+  const handleLANMultiplayer = () => {
+    setCurrentScreen('lanMultiplayer');
+  };
+
+  const handleInternetMultiplayer = () => {
+    setCurrentScreen('internetMultiplayer');
   };
 
   const handleBackToMenu = () => {
@@ -83,8 +95,9 @@ function AppContent() {
     setGameData(gameData);
   };
 
-  const handleMultiplayerGameStart = (roomId) => {
+  const handleMultiplayerGameStart = (roomId, type = 'internet') => {
     setMultiplayerRoomId(roomId);
+    setMultiplayerType(type);
     setCurrentScreen('multiplayerGame');
   };
 
@@ -149,21 +162,47 @@ function AppContent() {
             gameData={gameData}
           />
         );
-      case 'multiplayer':
+      case 'multiplayerSelection':
         return (
-          <MultiplayerLobby
-            onGameStart={handleMultiplayerGameStart}
+          <MultiplayerSelectionScreen
+            onLANMultiplayer={handleLANMultiplayer}
+            onInternetMultiplayer={handleInternetMultiplayer}
             onBack={handleBackToMenu}
           />
         );
-      case 'multiplayerGame':
+      case 'lanMultiplayer':
         return (
-          <MultiplayerGameScreen
-            roomId={multiplayerRoomId}
-            onBack={() => setCurrentScreen('multiplayer')}
-            onGameEnd={() => setCurrentScreen('multiplayer')}
+          <LANLobby
+            onGameStart={handleMultiplayerGameStart}
+            onBack={() => setCurrentScreen('multiplayerSelection')}
           />
         );
+      case 'internetMultiplayer':
+        return (
+          <InternetMultiplayerLobby
+            onGameStart={handleMultiplayerGameStart}
+            onBack={() => setCurrentScreen('multiplayerSelection')}
+          />
+        );
+      case 'multiplayerGame':
+        // Use different game screens based on multiplayer type
+        if (multiplayerType === 'lan') {
+          return (
+            <OfflineLANGameScreen
+              roomId={multiplayerRoomId}
+              onBack={() => setCurrentScreen('lanMultiplayer')}
+              onGameEnd={() => setCurrentScreen('lanMultiplayer')}
+            />
+          );
+        } else {
+          return (
+            <MultiplayerGameScreen
+              roomId={multiplayerRoomId}
+              onBack={() => setCurrentScreen('internetMultiplayer')}
+              onGameEnd={() => setCurrentScreen('internetMultiplayer')}
+            />
+          );
+        }
       case 'ranked':
         return (
           <RankedLobby

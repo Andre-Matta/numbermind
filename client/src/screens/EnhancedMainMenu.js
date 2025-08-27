@@ -219,7 +219,7 @@ export default function EnhancedMainMenu({
               <View style={styles.buttonContent}>
                 <Ionicons name="wifi" size={32} color="#fff" />
                 <Text style={styles.buttonText}>Multiplayer</Text>
-                <Text style={styles.buttonSubtext}>Play over LAN or internet</Text>
+                <Text style={styles.buttonSubtext}>LAN or internet gaming</Text>
               </View>
             </TouchableOpacity>
 
