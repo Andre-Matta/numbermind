@@ -12,31 +12,35 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import NotificationService from '../services/NotificationService';
+import { useAuth } from '../context/AuthContext';
 
 export default function NotificationTester({ onClose }) {
   const [testMessage, setTestMessage] = useState('Test notification message');
   const [testTitle, setTestTitle] = useState('Test Notification');
+  const { user } = useAuth();
 
   const testLocalNotification = async () => {
     try {
+      // Send local notification only for testing (no server save)
       await NotificationService.sendLocalNotification(
         testTitle,
         testMessage,
-        { type: 'test', timestamp: Date.now() }
+        { type: 'system', test: true, timestamp: Date.now() }
       );
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Success', 'Local notification sent!');
+      Alert.alert('Success', 'Test notification sent locally! Check your device notification center.');
     } catch (error) {
-      console.error('Failed to send local notification:', error);
+      console.error('Failed to send test notification:', error);
       Alert.alert('Error', 'Failed to send notification');
     }
   };
 
   const testGameInvite = async () => {
     try {
+      // Send local notification only for testing (no server save)
       await NotificationService.notifyGameInvite('TestPlayer', 'TEST123');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Success', 'Game invite notification sent!');
+      Alert.alert('Success', 'Game invite notification sent locally! Check your device notification center.');
     } catch (error) {
       console.error('Failed to send game invite notification:', error);
       Alert.alert('Error', 'Failed to send notification');
@@ -45,9 +49,10 @@ export default function NotificationTester({ onClose }) {
 
   const testMatchFound = async () => {
     try {
+      // Send local notification only for testing (no server save)
       await NotificationService.notifyMatchFound('TestOpponent', 'GAME456');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Success', 'Match found notification sent!');
+      Alert.alert('Success', 'Match found notification sent locally! Check your device notification center.');
     } catch (error) {
       console.error('Failed to send match found notification:', error);
       Alert.alert('Error', 'Failed to send notification');
@@ -56,9 +61,10 @@ export default function NotificationTester({ onClose }) {
 
   const testYourTurn = async () => {
     try {
+      // Send local notification only for testing (no server save)
       await NotificationService.notifyYourTurn('GAME789');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Success', 'Your turn notification sent!');
+      Alert.alert('Success', 'Your turn notification sent locally! Check your device notification center.');
     } catch (error) {
       console.error('Failed to send your turn notification:', error);
       Alert.alert('Error', 'Failed to send notification');
@@ -67,9 +73,10 @@ export default function NotificationTester({ onClose }) {
 
   const testGameResult = async () => {
     try {
+      // Send local notification only for testing (no server save)
       await NotificationService.notifyGameResult(true, 'TestOpponent', 150);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Success', 'Game result notification sent!');
+      Alert.alert('Success', 'Game result notification sent locally! Check your device notification center.');
     } catch (error) {
       console.error('Failed to send game result notification:', error);
       Alert.alert('Error', 'Failed to send notification');
@@ -78,9 +85,10 @@ export default function NotificationTester({ onClose }) {
 
   const testAchievement = async () => {
     try {
+      // Send local notification only for testing (no server save)
       await NotificationService.notifyAchievement('Test Achievement', 'You unlocked a test achievement!');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Success', 'Achievement notification sent!');
+      Alert.alert('Success', 'Achievement notification sent locally! Check your device notification center.');
     } catch (error) {
       console.error('Failed to send achievement notification:', error);
       Alert.alert('Error', 'Failed to send notification');
@@ -89,9 +97,10 @@ export default function NotificationTester({ onClose }) {
 
   const testConnectionStatus = async () => {
     try {
+      // Send local notification only for testing (no server save)
       await NotificationService.notifyConnectionStatus(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Success', 'Connection status notification sent!');
+      Alert.alert('Success', 'Connection status notification sent locally! Check your device notification center.');
     } catch (error) {
       console.error('Failed to send connection status notification:', error);
       Alert.alert('Error', 'Failed to send notification');
@@ -223,10 +232,10 @@ export default function NotificationTester({ onClose }) {
             <Text style={styles.sectionTitle}>Testing Instructions</Text>
             <Text style={styles.instructionText}>
               1. Make sure you've granted notification permissions{'\n'}
-              2. Test notifications will appear immediately{'\n'}
-              3. Check your device's notification center{'\n'}
-              4. Push tokens are logged to console{'\n'}
-              5. Use Expo Go for best testing experience
+              2. Test notifications are LOCAL ONLY (not saved to server){'\n'}
+              3. Check your device's notification center to see them{'\n'}
+              4. These tests won't appear in the app's notification screen{'\n'}
+              5. Use Expo Go for testing local notification behavior
             </Text>
           </View>
         </ScrollView>

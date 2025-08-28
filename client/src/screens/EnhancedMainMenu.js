@@ -143,7 +143,7 @@ export default function EnhancedMainMenu({
               <Ionicons name="log-out-outline" size={24} color="#fff" />
             </TouchableOpacity>
             
-            <View style={styles.playerInfo}>
+            <TouchableOpacity style={styles.playerInfo} onPress={handleShowProfile} activeOpacity={0.7}>
               <View style={styles.avatarContainer}>
                 <View style={styles.avatar}>
                   <Ionicons name="person" size={40} color="#fff" />
@@ -160,7 +160,12 @@ export default function EnhancedMainMenu({
                   <Text style={styles.rankText}>{user?.gameStats?.rank || 'Bronze'}</Text>
                 </View>
               </View>
-            </View>
+              
+              {/* Profile indicator */}
+              <View style={styles.profileIndicator}>
+                <Ionicons name="chevron-forward" size={20} color="rgba(255, 255, 255, 0.7)" />
+              </View>
+            </TouchableOpacity>
 
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
@@ -195,11 +200,6 @@ export default function EnhancedMainMenu({
 
           {/* Quick Actions */}
           <View style={styles.quickActions}>
-            <TouchableOpacity style={styles.quickActionButton} onPress={handleShowProfile}>
-              <Ionicons name="person-circle" size={24} color="#fff" />
-              <Text style={styles.quickActionText}>Profile</Text>
-            </TouchableOpacity>
-            
             <TouchableOpacity style={styles.quickActionButton} onPress={handleShowLeaderboard}>
               <Ionicons name="trophy" size={24} color="#fff" />
               <Text style={styles.quickActionText}>Leaderboard</Text>
@@ -370,6 +370,10 @@ const styles = StyleSheet.create({
   playerDetails: {
     flex: 1,
     minWidth: responsiveWidth(40),
+  },
+  profileIndicator: {
+    marginLeft: spacing.sm,
+    padding: scale(4),
   },
   playerName: {
     fontSize: getResponsiveFontSize(24),

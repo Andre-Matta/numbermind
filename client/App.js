@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaView, StyleSheet } from 'react-native';
+import { SafeAreaView, StyleSheet, BackHandler } from 'react-native';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { DataProvider, useData } from './src/context/DataContext';
 import LoadingScreen from './src/screens/LoadingScreen';
@@ -21,6 +21,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import NotificationService from './src/services/NotificationService';
 import NotificationCenter from './src/components/NotificationCenter';
 import NotificationTester from './src/components/NotificationTester';
+import EdgeGestureBlocker from './src/components/EdgeGestureBlocker';
 
 function AppContent() {
   const [currentScreen, setCurrentScreen] = useState('loading');
@@ -30,6 +31,22 @@ function AppContent() {
   const [multiplayerType, setMultiplayerType] = useState(null); // 'lan' or 'internet'
   const { user, isAuthenticated, isLoading } = useAuth();
   const { isDataLoaded } = useData();
+
+  // Handle back button and prevent app from closing unexpectedly
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      // If we're on the main menu, show exit confirmation
+      if (currentScreen === 'menu') {
+        return false; // Allow default behavior (app minimizes)
+      }
+      
+      // For other screens, handle back navigation
+      handleBackNavigation();
+      return true; // Prevent default behavior
+    });
+
+    return () => backHandler.remove();
+  }, [currentScreen]);
 
   // Initialize notifications when user is authenticated
   useEffect(() => {
@@ -150,6 +167,42 @@ function AppContent() {
 
   const handleShowNotificationTester = () => {
     setCurrentScreen('notificationTester');
+  };
+
+  // Handle back navigation for different screens
+  const handleBackNavigation = () => {
+    switch (currentScreen) {
+      case 'local':
+      case 'localSetup':
+      case 'profile':
+      case 'leaderboard':
+      case 'shop':
+      case 'ranked':
+      case 'notifications':
+      case 'notificationTester':
+        setCurrentScreen('menu');
+        break;
+      case 'multiplayerSelection':
+        setCurrentScreen('menu');
+        break;
+      case 'lanMultiplayer':
+      case 'internetMultiplayer':
+        setCurrentScreen('multiplayerSelection');
+        break;
+      case 'multiplayerGame':
+        if (multiplayerType === 'lan') {
+          setCurrentScreen('lanMultiplayer');
+        } else {
+          setCurrentScreen('internetMultiplayer');
+        }
+        break;
+      case 'login':
+        setCurrentScreen('menu');
+        break;
+      default:
+        setCurrentScreen('menu');
+        break;
+    }
   };
 
   const renderScreen = () => {
@@ -297,15 +350,17 @@ function AppContent() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
-      {renderScreen()}
-      {showRules && (
-        <GameRules
-          onClose={() => setShowRules(false)}
-        />
-      )}
-    </SafeAreaView>
+    <EdgeGestureBlocker>
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="light" />
+        {renderScreen()}
+        {showRules && (
+          <GameRules
+            onClose={() => setShowRules(false)}
+          />
+        )}
+      </SafeAreaView>
+    </EdgeGestureBlocker>
   );
 }
 

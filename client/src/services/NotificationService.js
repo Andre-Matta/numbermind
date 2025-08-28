@@ -174,88 +174,92 @@ class NotificationService {
   }
 
   // Game-specific notification methods
-  async notifyMatchFound(opponentName, gameId) {
-    await this.sendLocalNotification(
-      'Match Found! 🎯',
-      `You've been matched with ${opponentName}. Tap to join the game!`,
-      {
-        type: 'match_found',
-        gameId,
-        opponentName,
-      }
-    );
+  async notifyMatchFound(opponentName, gameId, userId = null) {
+    const title = 'Match Found! 🎯';
+    const body = `You've been matched with ${opponentName}. Tap to join the game!`;
+    const data = { gameId, opponentName };
+    
+    if (userId) {
+      await this.sendComprehensiveNotification(userId, title, body, 'match_found', data);
+    } else {
+      await this.sendLocalNotification(title, body, { ...data, type: 'match_found' });
+    }
   }
 
-  async notifyGameInvite(inviterName, roomId) {
-    await this.sendLocalNotification(
-      'Game Invite 🎮',
-      `${inviterName} invited you to play NumberMind!`,
-      {
-        type: 'game_invite',
-        roomId,
-        inviterName,
-      }
-    );
+  async notifyGameInvite(inviterName, roomId, userId = null) {
+    const title = 'Game Invite 🎮';
+    const body = `${inviterName} invited you to play NumberMind!`;
+    const data = { roomId, inviterName };
+    
+    if (userId) {
+      await this.sendComprehensiveNotification(userId, title, body, 'game_invite', data);
+    } else {
+      await this.sendLocalNotification(title, body, { ...data, type: 'game_invite' });
+    }
   }
 
-  async notifyFriendRequest(requesterName) {
-    await this.sendLocalNotification(
-      'Friend Request 👥',
-      `${requesterName} wants to be your friend!`,
-      {
-        type: 'friend_request',
-        requesterName,
-      }
-    );
+  async notifyFriendRequest(requesterName, userId = null) {
+    const title = 'Friend Request 👥';
+    const body = `${requesterName} wants to be your friend!`;
+    const data = { requesterName };
+    
+    if (userId) {
+      await this.sendComprehensiveNotification(userId, title, body, 'friend_request', data);
+    } else {
+      await this.sendLocalNotification(title, body, { ...data, type: 'friend_request' });
+    }
   }
 
-  async notifyYourTurn(gameId) {
-    await this.sendLocalNotification(
-      'Your Turn! 🎲',
-      'It\'s your turn to make a guess!',
-      {
-        type: 'your_turn',
-        gameId,
-      }
-    );
+  async notifyYourTurn(gameId, userId = null) {
+    const title = 'Your Turn! 🎲';
+    const body = 'It\'s your turn to make a guess!';
+    const data = { gameId };
+    
+    if (userId) {
+      await this.sendComprehensiveNotification(userId, title, body, 'your_turn', data);
+    } else {
+      await this.sendLocalNotification(title, body, { ...data, type: 'your_turn' });
+    }
   }
 
-  async notifyGameResult(won, opponentName, score) {
+  async notifyGameResult(won, opponentName, score, userId = null) {
     const title = won ? 'Victory! 🏆' : 'Game Over 💔';
     const body = won 
       ? `Congratulations! You beat ${opponentName} with ${score} points!`
       : `Better luck next time! ${opponentName} won with ${score} points.`;
+    const data = { won, opponentName, score };
     
-    await this.sendLocalNotification(title, body, {
-      type: 'game_result',
-      won,
-      opponentName,
-      score,
-    });
+    if (userId) {
+      await this.sendComprehensiveNotification(userId, title, body, 'game_result', data);
+    } else {
+      await this.sendLocalNotification(title, body, { ...data, type: 'game_result' });
+    }
   }
 
-  async notifyAchievement(achievementName, description) {
-    await this.sendLocalNotification(
-      'Achievement Unlocked! 🏅',
-      `${achievementName}: ${description}`,
-      {
-        type: 'achievement',
-        achievementName,
-        description,
-      }
-    );
+  async notifyAchievement(achievementName, description, userId = null) {
+    const title = 'Achievement Unlocked! 🏅';
+    const body = `${achievementName}: ${description}`;
+    const data = { achievementName, description };
+    
+    if (userId) {
+      await this.sendComprehensiveNotification(userId, title, body, 'achievement', data);
+    } else {
+      await this.sendLocalNotification(title, body, { ...data, type: 'achievement' });
+    }
   }
 
-  async notifyConnectionStatus(isConnected) {
+  async notifyConnectionStatus(isConnected, userId = null) {
     const title = isConnected ? 'Connected! 🌐' : 'Connection Lost! 📡';
     const body = isConnected 
       ? 'You\'re back online and ready to play!'
       : 'Check your internet connection to continue playing.';
+    const data = { isConnected };
     
-    await this.sendLocalNotification(title, body, {
-      type: 'connection_status',
-      isConnected,
-    });
+    if (userId) {
+      await this.sendComprehensiveNotification(userId, title, body, 'connection_status', data);
+    } else {
+      await this.sendLocalNotification(title, body, { ...data, type: 'connection_status' });
+    }
   }
 
   // Get push token for server registration
@@ -264,6 +268,60 @@ class NotificationService {
       this.expoPushToken = await AsyncStorage.getItem('expoPushToken');
     }
     return this.expoPushToken;
+  }
+
+  // Send notification to server (saves to database)
+  async sendNotificationToServer(userId, title, body, type, data = {}) {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        console.log('No auth token available for server notification');
+        return false;
+      }
+
+      const response = await fetch(`${config.API_BASE_URL}/notifications/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId,
+          title,
+          body,
+          type,
+          data,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Notification sent to server successfully:', result);
+      return true;
+    } catch (error) {
+      console.error('Failed to send notification to server:', error);
+      return false;
+    }
+  }
+
+  // Send comprehensive notification (both local and server)
+  async sendComprehensiveNotification(userId, title, body, type, data = {}) {
+    try {
+      // Send local notification for immediate display
+      await this.sendLocalNotification(title, body, { ...data, type });
+      
+      // Send to server for persistent storage
+      await this.sendNotificationToServer(userId, title, body, type, data);
+      
+      console.log('Comprehensive notification sent successfully');
+      return true;
+    } catch (error) {
+      console.error('Failed to send comprehensive notification:', error);
+      return false;
+    }
   }
 
   // Register push token with server

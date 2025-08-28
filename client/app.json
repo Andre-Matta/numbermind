@@ -31,7 +31,12 @@
         "android.permission.WAKE_LOCK"
       ],
       "package": "com.numbermind.app",
-      "useNextNotificationsApi": true
+      "useNextNotificationsApi": true,
+      "softwareKeyboardLayoutMode": "pan",
+      "windowSoftInputMode": "adjustResize",
+      "navigationBarColor": "#1a1a2e",
+      "statusBarBackgroundColor": "#1a1a2e",
+      "allowBackup": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
