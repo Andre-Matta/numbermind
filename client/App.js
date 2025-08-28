@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView, StyleSheet } from 'react-native';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -18,6 +18,9 @@ import PlayerProfile from './src/components/PlayerProfile';
 import Leaderboard from './src/components/Leaderboard';
 import Shop from './src/screens/ShopScreen';
 import LoginScreen from './src/screens/LoginScreen';
+import NotificationService from './src/services/NotificationService';
+import NotificationCenter from './src/components/NotificationCenter';
+import NotificationTester from './src/components/NotificationTester';
 
 function AppContent() {
   const [currentScreen, setCurrentScreen] = useState('loading');
@@ -27,6 +30,30 @@ function AppContent() {
   const [multiplayerType, setMultiplayerType] = useState(null); // 'lan' or 'internet'
   const { user, isAuthenticated, isLoading } = useAuth();
   const { isDataLoaded } = useData();
+
+  // Initialize notifications when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      initializeNotifications();
+    }
+  }, [isAuthenticated, user]);
+
+  const initializeNotifications = async () => {
+    try {
+      const success = await NotificationService.initialize();
+      if (success) {
+        console.log('Notifications initialized successfully');
+        
+        // Register push token with server
+        const pushToken = await NotificationService.getPushToken();
+        if (pushToken && user) {
+          await NotificationService.registerPushToken(user.id, pushToken);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to initialize notifications:', error);
+    }
+  };
 
   // If still loading auth state, show loading
   if (isLoading) {
@@ -117,6 +144,14 @@ function AppContent() {
     setCurrentScreen('shop');
   };
 
+  const handleShowNotifications = () => {
+    setCurrentScreen('notifications');
+  };
+
+  const handleShowNotificationTester = () => {
+    setCurrentScreen('notificationTester');
+  };
+
   const renderScreen = () => {
     switch (currentScreen) {
       case 'loading':
@@ -145,6 +180,8 @@ function AppContent() {
             onShowProfile={handleShowProfile}
             onShowLeaderboard={handleShowLeaderboard}
             onShowShop={handleShowShop}
+            onShowNotifications={handleShowNotifications}
+            onShowNotificationTester={handleShowNotificationTester}
           />
         );
       case 'localSetup':
@@ -228,6 +265,23 @@ function AppContent() {
             onBack={handleBackToMenu}
           />
         );
+              case 'notifications':
+          return (
+            <NotificationCenter
+              onClose={handleBackToMenu}
+              onNotificationPress={(notification) => {
+                // Handle notification press - navigate based on type
+                console.log('Notification pressed:', notification);
+                handleBackToMenu();
+              }}
+            />
+          );
+        case 'notificationTester':
+          return (
+            <NotificationTester
+              onClose={handleBackToMenu}
+            />
+          );
       default:
         return (
           <EnhancedMainMenu

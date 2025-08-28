@@ -172,7 +172,29 @@ const userSchema = new mongoose.Schema({
       allowRewardedAds: { type: Boolean, default: true },
       allowInterstitialAds: { type: Boolean, default: true }
     }
-  }
+  },
+  
+  // Push Notification Tokens
+  pushTokens: [{
+    token: {
+      type: String,
+      required: true
+    },
+    platform: {
+      type: String,
+      enum: ['ios', 'android', 'web'],
+      required: true
+    },
+    deviceId: String,
+    isActive: {
+      type: Boolean,
+      default: true
+    },
+    lastUsed: {
+      type: Date,
+      default: Date.now
+    }
+  }]
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

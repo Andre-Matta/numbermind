@@ -14,6 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import FloatingBubbles from '../components/FloatingBubbles';
 import { useAuth } from '../context/AuthContext';
+import NotificationBadge from '../components/NotificationBadge';
+import NotificationTester from '../components/NotificationTester';
 import { 
   scale, 
   responsiveWidth, 
@@ -35,7 +37,9 @@ export default function EnhancedMainMenu({
   onShowProfile,
   onShowLeaderboard,
   onShowShop,
-  onShowRankedLobby
+  onShowRankedLobby,
+  onShowNotifications,
+  onShowNotificationTester
 }) {
   const { logout, user } = useAuth();
 
@@ -72,6 +76,16 @@ export default function EnhancedMainMenu({
   const handleShowShop = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onShowShop();
+  };
+
+  const handleShowNotifications = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onShowNotifications();
+  };
+
+  const handleShowNotificationTester = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onShowNotificationTester();
   };
 
   const handleLogout = () => {
@@ -194,6 +208,19 @@ export default function EnhancedMainMenu({
             <TouchableOpacity style={styles.quickActionButton} onPress={handleShowShop}>
               <Ionicons name="wallet-outline" size={24} color="#fff" />
               <Text style={styles.quickActionText}>Shop</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.quickActionButton} onPress={handleShowNotifications}>
+              <View style={styles.notificationButtonContainer}>
+                <Ionicons name="notifications" size={24} color="#fff" />
+                <NotificationBadge />
+              </View>
+              <Text style={styles.quickActionText}>Notifications</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.quickActionButton} onPress={handleShowNotificationTester}>
+              <Ionicons name="flask" size={24} color="#fff" />
+              <Text style={styles.quickActionText}>Test Notifications</Text>
             </TouchableOpacity>
           </View>
 
@@ -424,6 +451,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 8,
     textAlign: 'center',
+  },
+  notificationButtonContainer: {
+    position: 'relative',
   },
   gameOptions: {
     paddingHorizontal: 20,

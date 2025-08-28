@@ -24,6 +24,9 @@ const config = {
   ENABLE_HAPTICS: true,
   ENABLE_SOUND: false,
   ENABLE_ANIMATIONS: true,
+  
+  // Expo configuration
+  EXPO_PROJECT_ID: 'f7981a89-39a0-43c3-8c63-9346e0fa35ce',
 };
 
 export default config;
