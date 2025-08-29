@@ -140,7 +140,8 @@ const userSchema = new mongoose.Schema({
   friendRequests: [{
     from: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
+      ref: 'User',
+      required: true
     },
     status: {
       type: String,
@@ -148,6 +149,22 @@ const userSchema = new mongoose.Schema({
       default: 'pending'
     },
     createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    respondedAt: {
+      type: Date
+    }
+  }],
+  
+  // Blocked users (for reporting/blocking functionality)
+  blockedUsers: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    reason: String,
+    blockedAt: {
       type: Date,
       default: Date.now
     }
@@ -218,6 +235,10 @@ userSchema.index({ username: 1 });
 userSchema.index({ 'gameStats.rating': -1 });
 userSchema.index({ 'gameStats.level': -1 });
 userSchema.index({ lastActive: -1 });
+userSchema.index({ friends: 1 });
+userSchema.index({ 'friendRequests.from': 1 });
+userSchema.index({ 'friendRequests.status': 1 });
+userSchema.index({ 'friendRequests.createdAt': -1 });
 
 // Pre-save middleware to hash password
 userSchema.pre('save', async function(next) {
@@ -285,6 +306,43 @@ userSchema.methods.resetGamesSinceAd = function() {
 // Method to check if ad should be shown
 userSchema.methods.shouldShowAd = function() {
   return this.adSystem.gamesSinceLastAd >= 3;
+};
+
+// Friend-related methods
+userSchema.methods.isFriendsWith = function(userId) {
+  return this.friends.includes(userId);
+};
+
+userSchema.methods.hasPendingRequestFrom = function(userId) {
+  return this.friendRequests.some(
+    request => request.from.toString() === userId.toString() && request.status === 'pending'
+  );
+};
+
+userSchema.methods.hasPendingRequestTo = async function(userId) {
+  const targetUser = await this.constructor.findById(userId);
+  return targetUser ? targetUser.hasPendingRequestFrom(this._id) : false;
+};
+
+userSchema.methods.addFriend = function(userId) {
+  if (!this.friends.includes(userId)) {
+    this.friends.push(userId);
+    return this.save();
+  }
+  return Promise.resolve(this);
+};
+
+userSchema.methods.removeFriend = function(userId) {
+  this.friends = this.friends.filter(id => id.toString() !== userId.toString());
+  return this.save();
+};
+
+userSchema.methods.getFriendRequestCount = function() {
+  return this.friendRequests.filter(request => request.status === 'pending').length;
+};
+
+userSchema.methods.isBlocked = function(userId) {
+  return this.blockedUsers.some(blocked => blocked.user.toString() === userId.toString());
 };
 
 module.exports = mongoose.model('User', userSchema);

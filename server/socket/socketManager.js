@@ -55,6 +55,9 @@ const setupSocketIO = (server) => {
     
     // Update user's online status
     updateUserStatus(socket.userId, true);
+    
+    // Join personal channel for friend notifications
+    socket.join(`user_${socket.userId}`);
 
     // Handle private game room creation
     socket.on('createPrivateRoom', async (data, callback) => {
@@ -655,8 +658,277 @@ const setupSocketIO = (server) => {
       }
     });
 
+    // Friend-related socket events
+    
+    // Get friend's online status
+    socket.on('getFriendStatus', async (data, callback) => {
+      try {
+        if (typeof callback !== 'function') {
+          console.error('getFriendStatus: callback is not a function');
+          return;
+        }
+
+        const { friendId } = data;
+        if (!friendId) {
+          return callback({ success: false, error: 'Friend ID is required' });
+        }
+
+        // Check if they are actually friends
+        const user = await User.findById(socket.userId);
+        if (!user || !user.friends.includes(friendId)) {
+          return callback({ success: false, error: 'Not in your friends list' });
+        }
+
+        const friend = await User.findById(friendId).select('lastActive settings.privacy.showOnlineStatus');
+        if (!friend) {
+          return callback({ success: false, error: 'Friend not found' });
+        }
+
+        const isOnline = isUserOnline(friend);
+
+        callback({
+          success: true,
+          data: {
+            friendId,
+            isOnline,
+            lastActive: friend.lastActive
+          }
+        });
+
+      } catch (error) {
+        console.error('Error getting friend status:', error);
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to get friend status' });
+        }
+      }
+    });
+
+    // Notify friends when user comes online/offline
+    socket.on('updateOnlineStatus', async () => {
+      try {
+        const user = await User.findById(socket.userId).populate('friends', 'lastActive settings.privacy.showOnlineStatus');
+        if (!user) return;
+
+        // Notify all friends about status change
+        user.friends.forEach(friend => {
+          socket.to(`user_${friend._id}`).emit('friendStatusUpdate', {
+            friendId: socket.userId,
+            username: socket.user.username,
+            isOnline: true,
+            lastActive: new Date()
+          });
+        });
+
+      } catch (error) {
+        console.error('Error updating online status:', error);
+      }
+    });
+
+    // Send friend request via socket (alternative to REST API)
+    socket.on('sendFriendRequest', async (data, callback) => {
+      try {
+        if (typeof callback !== 'function') {
+          console.error('sendFriendRequest: callback is not a function');
+          return;
+        }
+
+        const { username, userId: targetUserId } = data;
+        
+        if (!username && !targetUserId) {
+          return callback({ success: false, error: 'Username or user ID is required' });
+        }
+
+        // Find target user
+        let targetUser;
+        if (targetUserId) {
+          targetUser = await User.findById(targetUserId);
+        } else {
+          targetUser = await User.findOne({ username });
+        }
+
+        if (!targetUser) {
+          return callback({ success: false, error: 'User not found' });
+        }
+
+        if (targetUser._id.toString() === socket.userId) {
+          return callback({ success: false, error: 'Cannot send friend request to yourself' });
+        }
+
+        // Check if already friends or request exists
+        if (targetUser.friends.includes(socket.userId)) {
+          return callback({ success: false, error: 'Already friends' });
+        }
+
+        if (targetUser.hasPendingRequestFrom(socket.userId)) {
+          return callback({ success: false, error: 'Friend request already sent' });
+        }
+
+        if (!targetUser.settings.privacy.allowFriendRequests) {
+          return callback({ success: false, error: 'User not accepting friend requests' });
+        }
+
+        // Add friend request
+        targetUser.friendRequests.push({
+          from: socket.userId,
+          status: 'pending',
+          createdAt: new Date()
+        });
+
+        await targetUser.save();
+
+        // Send real-time notification
+        socket.to(`user_${targetUser._id}`).emit('friendRequest', {
+          type: 'friend_request',
+          from: {
+            id: socket.userId,
+            username: socket.user.username,
+            avatar: socket.user.avatar
+          },
+          message: `${socket.user.username} sent you a friend request`
+        });
+
+        callback({ 
+          success: true, 
+          message: 'Friend request sent',
+          data: { targetUser: { id: targetUser._id, username: targetUser.username } }
+        });
+
+      } catch (error) {
+        console.error('Error sending friend request:', error);
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to send friend request' });
+        }
+      }
+    });
+
+    // Accept/decline friend request via socket
+    socket.on('respondToFriendRequest', async (data, callback) => {
+      try {
+        if (typeof callback !== 'function') {
+          console.error('respondToFriendRequest: callback is not a function');
+          return;
+        }
+
+        const { requestId, action } = data;
+        
+        if (!['accept', 'decline'].includes(action)) {
+          return callback({ success: false, error: 'Invalid action' });
+        }
+
+        const user = await User.findById(socket.userId);
+        if (!user) {
+          return callback({ success: false, error: 'User not found' });
+        }
+
+        const friendRequest = user.friendRequests.id(requestId);
+        if (!friendRequest || friendRequest.status !== 'pending') {
+          return callback({ success: false, error: 'Friend request not found or already processed' });
+        }
+
+        const senderId = friendRequest.from;
+
+        if (action === 'accept') {
+          // Add both users to each other's friends list
+          await User.findByIdAndUpdate(socket.userId, {
+            $addToSet: { friends: senderId }
+          });
+
+          await User.findByIdAndUpdate(senderId, {
+            $addToSet: { friends: socket.userId }
+          });
+
+          friendRequest.status = 'accepted';
+          friendRequest.respondedAt = new Date();
+
+          // Get friend info
+          const friendUser = await User.findById(senderId).select('username avatar gameStats.level');
+
+          // Notify the sender
+          socket.to(`user_${senderId}`).emit('friendRequestAccepted', {
+            type: 'friend_accepted',
+            from: {
+              id: socket.userId,
+              username: socket.user.username,
+              avatar: socket.user.avatar
+            },
+            message: `${socket.user.username} accepted your friend request`
+          });
+
+          callback({
+            success: true,
+            message: 'Friend request accepted',
+            data: {
+              newFriend: {
+                id: friendUser._id,
+                username: friendUser.username,
+                avatar: friendUser.avatar,
+                level: friendUser.gameStats?.level || 1
+              }
+            }
+          });
+
+        } else {
+          friendRequest.status = 'declined';
+          friendRequest.respondedAt = new Date();
+          
+          callback({ success: true, message: 'Friend request declined' });
+        }
+
+        await user.save();
+
+      } catch (error) {
+        console.error('Error responding to friend request:', error);
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to process friend request' });
+        }
+      }
+    });
+
+    // Remove friend via socket
+    socket.on('removeFriend', async (data, callback) => {
+      try {
+        if (typeof callback !== 'function') {
+          console.error('removeFriend: callback is not a function');
+          return;
+        }
+
+        const { friendId } = data;
+        
+        if (!friendId) {
+          return callback({ success: false, error: 'Friend ID is required' });
+        }
+
+        // Remove from both users' friends lists
+        await User.findByIdAndUpdate(socket.userId, {
+          $pull: { friends: friendId }
+        });
+
+        await User.findByIdAndUpdate(friendId, {
+          $pull: { friends: socket.userId }
+        });
+
+        // Notify the removed friend
+        socket.to(`user_${friendId}`).emit('friendRemoved', {
+          type: 'friend_removed',
+          from: {
+            id: socket.userId,
+            username: socket.user.username
+          },
+          message: `${socket.user.username} removed you from their friends list`
+        });
+
+        callback({ success: true, message: 'Friend removed' });
+
+      } catch (error) {
+        console.error('Error removing friend:', error);
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to remove friend' });
+        }
+      }
+    });
+
     // Handle disconnection
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
       console.log(`🔌 User disconnected: ${socket.user.username} (${socket.userId}) - Socket ID: ${socket.id}`);
       
       // Remove from active connections
@@ -668,6 +940,23 @@ const setupSocketIO = (server) => {
       
       // Update user's online status
       updateUserStatus(socket.userId, false);
+      
+      // Notify friends about user going offline
+      try {
+        const user = await User.findById(socket.userId).populate('friends', '_id');
+        if (user) {
+          user.friends.forEach(friend => {
+            socket.to(`user_${friend._id}`).emit('friendStatusUpdate', {
+              friendId: socket.userId,
+              username: socket.user.username,
+              isOnline: false,
+              lastActive: new Date()
+            });
+          });
+        }
+      } catch (error) {
+        console.error('Error notifying friends of disconnect:', error);
+      }
       
       // Handle leaving game rooms
       for (const [roomId, game] of gameRooms.entries()) {
@@ -800,12 +1089,22 @@ const createMatch = async (player1Id, player2Id, gameMode, matchType) => {
 const updateUserStatus = async (userId, isOnline) => {
   try {
     await User.findByIdAndUpdate(userId, {
-      lastActive: new Date(),
-      'settings.privacy.showOnlineStatus': isOnline
+      lastActive: new Date()
     });
   } catch (error) {
     console.error('Error updating user status:', error);
   }
+};
+
+// Helper function to determine if user is online
+// This checks if user was active in the last 5 minutes and has showOnlineStatus enabled
+const isUserOnline = (user) => {
+  if (!user.settings?.privacy?.showOnlineStatus) {
+    return false; // User has privacy setting to hide online status
+  }
+  
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+  return user.lastActive && user.lastActive > fiveMinutesAgo;
 };
 
 const handlePlayerDisconnect = async (roomId, userId) => {

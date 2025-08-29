@@ -124,3 +124,38 @@ export const borderRadius = {
   xxl: scale(32),
   round: scale(50),
 };
+
+// Get device type based on screen width
+export const getDeviceType = () => {
+  if (screenWidth < 768) return 'mobile';
+  if (screenWidth < 1024) return 'tablet';
+  return 'desktop';
+};
+
+// Hook for responsive values based on device type
+export const useResponsiveValue = (values) => {
+  const deviceType = getDeviceType();
+  
+  if (typeof values === 'object' && values !== null) {
+    // If it's an object with device-specific values
+    if (values[deviceType] !== undefined) {
+      return scale(values[deviceType]);
+    }
+    // Fallback to mobile if deviceType not found
+    if (values.mobile !== undefined) {
+      return scale(values.mobile);
+    }
+    // If it's just a number, scale it
+    if (typeof values === 'number') {
+      return scale(values);
+    }
+  }
+  
+  // If it's a direct number, scale it
+  if (typeof values === 'number') {
+    return scale(values);
+  }
+  
+  // Default fallback
+  return scale(16);
+};

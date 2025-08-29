@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView, StyleSheet, BackHandler } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { DataProvider, useData } from './src/context/DataContext';
 import LoadingScreen from './src/screens/LoadingScreen';
@@ -22,6 +23,7 @@ import NotificationService from './src/services/NotificationService';
 import NotificationCenter from './src/components/NotificationCenter';
 import NotificationTester from './src/components/NotificationTester';
 import EdgeGestureBlocker from './src/components/EdgeGestureBlocker';
+import FriendsScreenSimple from './src/screens/FriendsScreenSimple';
 
 function AppContent() {
   const [currentScreen, setCurrentScreen] = useState('loading');
@@ -169,6 +171,10 @@ function AppContent() {
     setCurrentScreen('notificationTester');
   };
 
+  const handleShowFriends = () => {
+    setCurrentScreen('friends');
+  };
+
   // Handle back navigation for different screens
   const handleBackNavigation = () => {
     switch (currentScreen) {
@@ -180,6 +186,7 @@ function AppContent() {
       case 'ranked':
       case 'notifications':
       case 'notificationTester':
+      case 'friends':
         setCurrentScreen('menu');
         break;
       case 'multiplayerSelection':
@@ -235,6 +242,8 @@ function AppContent() {
             onShowShop={handleShowShop}
             onShowNotifications={handleShowNotifications}
             onShowNotificationTester={handleShowNotificationTester}
+            onShowFriends={handleShowFriends}
+            onShowRules={() => setShowRules(true)}
           />
         );
       case 'localSetup':
@@ -335,6 +344,30 @@ function AppContent() {
               onClose={handleBackToMenu}
             />
           );
+        case 'friends':
+          return (
+            <FriendsScreenSimple
+              navigation={{
+                navigate: (screenName, params) => {
+                  // Handle navigation to other screens from friends
+                  if (screenName === 'Profile' && params?.userId) {
+                    // For now, just go back to menu since we don't have individual profile viewing
+                    handleBackToMenu();
+                  } else if (screenName === 'MultiplayerLobby') {
+                    // Navigate to multiplayer with friend invitation
+                    handleInternetMultiplayer();
+                  } else {
+                    handleBackToMenu();
+                  }
+                },
+                addListener: (event, callback) => {
+                  // Mock navigation listener for focus events
+                  return () => {}; // Return cleanup function
+                }
+              }}
+              route={{}}
+            />
+          );
       default:
         return (
           <EnhancedMainMenu
@@ -344,6 +377,10 @@ function AppContent() {
             onShowProfile={handleShowProfile}
             onShowLeaderboard={handleShowLeaderboard}
             onShowShop={handleShowShop}
+            onShowNotifications={handleShowNotifications}
+            onShowNotificationTester={handleShowNotificationTester}
+            onShowFriends={handleShowFriends}
+            onShowRules={() => setShowRules(true)}
           />
         );
     }
@@ -366,11 +403,13 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <DataProvider>
-        <AppContent />
-      </DataProvider>
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <DataProvider>
+          <AppContent />
+        </DataProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 

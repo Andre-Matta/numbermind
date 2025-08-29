@@ -39,7 +39,8 @@ export default function EnhancedMainMenu({
   onShowShop,
   onShowRankedLobby,
   onShowNotifications,
-  onShowNotificationTester
+  onShowNotificationTester,
+  onShowFriends
 }) {
   const { logout, user } = useAuth();
 
@@ -88,26 +89,9 @@ export default function EnhancedMainMenu({
     onShowNotificationTester();
   };
 
-  const handleLogout = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Logout', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to logout. Please try again.');
-            }
-          }
-        }
-      ]
-    );
+  const handleShowFriends = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onShowFriends();
   };
 
   const getRankColor = (rank) => {
@@ -137,12 +121,18 @@ export default function EnhancedMainMenu({
         <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
           {/* Header with Player Stats */}
           <FloatingBubbles />
+          {/* Friends Button - Completely isolated */}
+          <TouchableOpacity 
+            style={styles.friendsButton} 
+            onPress={handleShowFriends}
+            activeOpacity={0.8}
+          >
+            <View style={styles.friendsButtonContent}>
+              <Ionicons name="person-add" size={24} color="#fff" />
+            </View>
+          </TouchableOpacity>
+
           <View style={styles.header}>
-            {/* Logout Button */}
-            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={24} color="#fff" />
-            </TouchableOpacity>
-            
             <TouchableOpacity style={styles.playerInfo} onPress={handleShowProfile} activeOpacity={0.7}>
               <View style={styles.avatarContainer}>
                 <View style={styles.avatar}>
@@ -159,11 +149,6 @@ export default function EnhancedMainMenu({
                   <View style={[styles.rankDot, { backgroundColor: getRankColor(user?.gameStats?.rank || 'Bronze') }]} />
                   <Text style={styles.rankText}>{user?.gameStats?.rank || 'Bronze'}</Text>
                 </View>
-              </View>
-              
-              {/* Profile indicator */}
-              <View style={styles.profileIndicator}>
-                <Ionicons name="chevron-forward" size={20} color="rgba(255, 255, 255, 0.7)" />
               </View>
             </TouchableOpacity>
 
@@ -318,16 +303,26 @@ const styles = StyleSheet.create({
     paddingBottom: getResponsivePadding(30),
     position: 'relative',
   },
-  logoutButton: {
+  friendsButton: {
     position: 'absolute',
     top: getResponsivePadding(60),
     right: getResponsivePadding(20),
-    zIndex: 10,
-    padding: scale(8),
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    zIndex: 1000,
+    padding: 0,
+    backgroundColor: 'rgba(76, 175, 80, 0.2)',
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(76, 175, 80, 0.5)',
+    width: scale(44),
+    height: scale(44),
+    overflow: 'hidden',
+  },
+  friendsButtonContent: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
   },
   playerInfo: {
     flexDirection: 'row',
@@ -370,10 +365,6 @@ const styles = StyleSheet.create({
   playerDetails: {
     flex: 1,
     minWidth: responsiveWidth(40),
-  },
-  profileIndicator: {
-    marginLeft: spacing.sm,
-    padding: scale(4),
   },
   playerName: {
     fontSize: getResponsiveFontSize(24),

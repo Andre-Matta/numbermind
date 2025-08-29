@@ -15,6 +15,7 @@ const gameRoutes = require('./routes/games');
 const shopRoutes = require('./routes/shop');
 const paymentRoutes = require('./routes/payments');
 const notificationRoutes = require('./routes/notifications');
+const friendRoutes = require('./routes/friends');
 
 const { setupSocketIO } = require('./socket/socketManager');
 const { connectDB } = require('./config/database');
@@ -64,6 +65,7 @@ app.use('/api/games', gameRoutes);
 app.use('/api/shop', shopRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/friends', friendRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

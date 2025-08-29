@@ -5,12 +5,38 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
+import * as Haptics from 'expo-haptics';
 
 
 export default function PlayerProfile({ onBack, user }) {
+  const { logout } = useAuth();
+
+  const handleLogout = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Logout', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -22,7 +48,9 @@ export default function PlayerProfile({ onBack, user }) {
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.title}>Player Profile</Text>
-          <View style={styles.placeholder} />
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={24} color="#fff" />
+          </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.content}>
@@ -84,8 +112,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     flex: 1,
   },
-  placeholder: {
-    width: 40,
+  logoutButton: {
+    padding: 8,
+    backgroundColor: 'rgba(244, 67, 54, 0.3)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(244, 67, 54, 0.5)',
   },
   content: {
     flex: 1,
