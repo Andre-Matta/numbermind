@@ -417,7 +417,10 @@ router.get('/search', async (req, res) => {
     const { q: searchTerm, page = 1, limit = 10 } = req.query;
     const userId = req.user.userId;
 
+    console.log('Friends search request:', { searchTerm, page, limit, userId });
+
     if (!searchTerm || searchTerm.trim().length < 2) {
+      console.log('Search term too short:', searchTerm);
       return res.status(400).json({
         success: false,
         message: 'Search term must be at least 2 characters long'
@@ -436,18 +439,28 @@ router.get('/search', async (req, res) => {
           ]
         },
         { _id: { $ne: userId } }, // Exclude current user
-        { 'settings.privacy.allowFriendRequests': true } // Only users accepting requests
+        { 
+          $or: [
+            { 'settings.privacy.allowFriendRequests': true },
+            { 'settings.privacy.allowFriendRequests': { $exists: false } } // Include users without explicit privacy settings
+          ]
+        }
       ]
     };
 
+    console.log('Search query:', JSON.stringify(searchQuery, null, 2));
+    
     const users = await User.find(searchQuery)
       .select('username avatar gameStats.level')
       .limit(parseInt(limit))
       .skip((page - 1) * limit)
       .sort({ username: 1 });
 
+    console.log(`Found ${users.length} users matching search`);
+    console.log('User results:', users.map(u => ({ id: u._id, username: u.username })));
+
     // Add relationship status for each user
-    const usersWithStatus = users.map(user => {
+    const usersWithStatus = await Promise.all(users.map(async user => {
       const isFriend = currentUser.friends.includes(user._id);
       const hasPendingRequest = currentUser.friendRequests.some(
         req => req.from.toString() === user._id.toString() && req.status === 'pending'
@@ -460,7 +473,7 @@ router.get('/search', async (req, res) => {
         relationshipStatus = 'pending_incoming';
       } else {
         // Check if current user sent a request to this user
-        const sentRequest = User.findOne({
+        const sentRequest = await User.findOne({
           _id: user._id,
           'friendRequests.from': userId,
           'friendRequests.status': 'pending'
@@ -477,7 +490,7 @@ router.get('/search', async (req, res) => {
         level: user.gameStats?.level || 1,
         relationshipStatus
       };
-    });
+    }));
 
     const totalCount = await User.countDocuments(searchQuery);
 

@@ -458,7 +458,11 @@ class FriendsService {
         limit: limit.toString(),
       });
 
-      const response = await fetch(`${config.API_BASE_URL}/friends/search?${params}`, {
+      const url = `${config.API_BASE_URL}/friends/search?${params}`;
+      console.log('FriendsService - Search URL:', url);
+      console.log('FriendsService - Search params:', Object.fromEntries(params));
+      
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -466,7 +470,11 @@ class FriendsService {
         },
       });
 
+      console.log('FriendsService - Search response status:', response.status);
+      console.log('FriendsService - Search response ok:', response.ok);
+
       const data = await response.json();
+      console.log('FriendsService - Search response data:', data);
 
       if (data.success) {
         // Cache the result
