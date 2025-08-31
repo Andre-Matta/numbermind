@@ -16,19 +16,87 @@ const connectDB = async () => {
   }
 };
 
+// Find user by username or email
+const findUser = async (identifier) => {
+  try {
+    // Try to find by username first
+    let user = await User.findOne({ username: identifier });
+    
+    if (!user) {
+      // Try to find by email
+      user = await User.findOne({ email: identifier });
+    }
+    
+    if (!user) {
+      // Try to find by ID
+      user = await User.findById(identifier);
+    }
+    
+    return user;
+  } catch (error) {
+    console.error('Error finding user:', error);
+    return null;
+  }
+};
+
+// Show user's FCM token status
+const showUserTokenStatus = (user) => {
+  console.log(`\n📱 User: ${user.username} (${user.email})`);
+  console.log(`🆔 User ID: ${user._id}`);
+  console.log(`📱 FCM Tokens: ${user.fcmTokens.length}`);
+  
+  if (user.fcmTokens.length === 0) {
+    console.log('❌ No FCM tokens registered for this user');
+    console.log('💡 Make sure to register FCM token from your phone first');
+    return false;
+  }
+  
+  user.fcmTokens.forEach((token, index) => {
+    console.log(`   Token ${index + 1}: ${token.token.substring(0, 20)}...`);
+    console.log(`   Platform: ${token.platform}`);
+    console.log(`   Active: ${token.isActive}`);
+    console.log(`   Last Used: ${token.lastUsed}`);
+  });
+  
+  return true;
+};
+
 // Test notification types
-const testNotifications = async () => {
+const testNotifications = async (userIdentifier) => {
   console.log('🧪 Testing Multiplayer Game Notifications\n');
 
   try {
-    // Find a test user
-    const testUser = await User.findOne();
-    if (!testUser) {
-      console.log('❌ No users found in database');
+    // Find the specific user
+    let testUser;
+    if (userIdentifier) {
+      testUser = await findUser(userIdentifier);
+      if (!testUser) {
+        console.log(`❌ User not found: ${userIdentifier}`);
+        console.log('💡 Try using your username, email, or user ID');
+        return;
+      }
+    } else {
+      // Fallback to first user
+      testUser = await User.findOne();
+      if (!testUser) {
+        console.log('❌ No users found in database');
+        return;
+      }
+    }
+
+    // Show user's FCM token status
+    const hasTokens = showUserTokenStatus(testUser);
+    
+    if (!hasTokens) {
+      console.log('\n💡 To receive notifications on your phone:');
+      console.log('   1. Open the NumberMind app on your phone');
+      console.log('   2. Make sure you\'re logged in');
+      console.log('   3. The app should automatically register FCM tokens');
+      console.log('   4. Run this test again');
       return;
     }
 
-    console.log(`📱 Testing notifications for user: ${testUser.username} (${testUser._id})`);
+    console.log(`\n📱 Testing notifications for user: ${testUser.username} (${testUser._id})`);
 
     // Test 1: Player joined notification
     console.log('\n1️⃣ Testing Player Joined Notification');
@@ -156,6 +224,7 @@ const testNotifications = async () => {
     console.log('   1. Your device has FCM tokens registered');
     console.log('   2. Firebase configuration is correct');
     console.log('   3. App has notification permissions');
+    console.log('   4. App is not in foreground (notifications may be silent)');
 
   } catch (error) {
     console.error('❌ Error testing notifications:', error);
@@ -166,7 +235,18 @@ const testNotifications = async () => {
 const runTest = async () => {
   try {
     await connectDB();
-    await testNotifications();
+    
+    // Get user identifier from command line argument
+    const userIdentifier = process.argv[2];
+    
+    if (userIdentifier) {
+      console.log(`🔍 Testing notifications for user: ${userIdentifier}`);
+    } else {
+      console.log('🔍 Testing notifications for first user in database');
+      console.log('💡 To test for a specific user, run: npm run test-notifications <username/email/userId>');
+    }
+    
+    await testNotifications(userIdentifier);
   } catch (error) {
     console.error('❌ Test failed:', error);
   } finally {
