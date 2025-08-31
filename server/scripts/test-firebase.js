@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../../.env') });
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 // Import required modules
 const { messaging } = require('../config/firebase');
@@ -29,6 +29,18 @@ const testFirebaseConfig = async () => {
     }
     
     console.log('✅ Firebase messaging initialized successfully');
+    
+    // Check if using JSON file or environment variables
+    const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || 
+      path.join(__dirname, '../firebase-service-account.json');
+    
+    const fs = require('fs');
+    if (fs.existsSync(serviceAccountPath)) {
+      console.log('📁 Using service account JSON file');
+    } else {
+      console.log('🔧 Using environment variables');
+    }
+    
     return true;
   } catch (error) {
     console.error('❌ Firebase configuration test failed:', error);

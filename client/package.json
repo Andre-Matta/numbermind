@@ -26,8 +26,8 @@
     "react-native-screens": "~4.11.1",
     "react-native-tab-view": "^3.5.2",
     "socket.io-client": "^4.8.1",
-    "@react-native-firebase/app": "^20.8.0",
-    "@react-native-firebase/messaging": "^20.8.0"
+    "@react-native-firebase/app": "^22.4.0",
+    "@react-native-firebase/messaging": "^22.4.0"
   },
   "devDependencies": {
     "@babel/core": "^7.28.3",
