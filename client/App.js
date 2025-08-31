@@ -22,8 +22,10 @@ import LoginScreen from './src/screens/LoginScreen';
 import NotificationService from './src/services/NotificationService';
 import NotificationCenter from './src/components/NotificationCenter';
 import NotificationTester from './src/components/NotificationTester';
+import FirebaseTest from './src/components/FirebaseTest';
 import EdgeGestureBlocker from './src/components/EdgeGestureBlocker';
 import FriendsScreenSimple from './src/screens/FriendsScreenSimple';
+import { initializeFirebase, cleanupFirebase } from './src/utils/firebaseInit';
 
 function AppContent() {
   const [currentScreen, setCurrentScreen] = useState('loading');
@@ -50,27 +52,30 @@ function AppContent() {
     return () => backHandler.remove();
   }, [currentScreen]);
 
-  // Initialize notifications when user is authenticated
+  // Initialize Firebase when user is authenticated
   useEffect(() => {
     if (isAuthenticated && user) {
-      initializeNotifications();
+      initializeFirebaseServices();
     }
   }, [isAuthenticated, user]);
 
-  const initializeNotifications = async () => {
+  // Cleanup Firebase when component unmounts
+  useEffect(() => {
+    return () => {
+      cleanupFirebase();
+    };
+  }, []);
+
+  const initializeFirebaseServices = async () => {
     try {
-      const success = await NotificationService.initialize();
+      const success = await initializeFirebase();
       if (success) {
-        console.log('Notifications initialized successfully');
-        
-        // Register push token with server
-        const pushToken = await NotificationService.getPushToken();
-        if (pushToken && user) {
-          await NotificationService.registerPushToken(user.id, pushToken);
-        }
+        console.log('Firebase services initialized successfully');
+      } else {
+        console.log('Firebase services initialization failed, using fallback');
       }
     } catch (error) {
-      console.error('Failed to initialize notifications:', error);
+      console.error('Failed to initialize Firebase services:', error);
     }
   };
 
@@ -171,6 +176,10 @@ function AppContent() {
     setCurrentScreen('notificationTester');
   };
 
+  const handleShowFirebaseTest = () => {
+    setCurrentScreen('firebaseTest');
+  };
+
   const handleShowFriends = () => {
     setCurrentScreen('friends');
   };
@@ -186,6 +195,7 @@ function AppContent() {
       case 'ranked':
       case 'notifications':
       case 'notificationTester':
+      case 'firebaseTest':
       case 'friends':
         setCurrentScreen('menu');
         break;
@@ -341,6 +351,12 @@ function AppContent() {
         case 'notificationTester':
           return (
             <NotificationTester
+              onClose={handleBackToMenu}
+            />
+          );
+        case 'firebaseTest':
+          return (
+            <FirebaseTest
               onClose={handleBackToMenu}
             />
           );

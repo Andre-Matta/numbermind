@@ -40,6 +40,7 @@ export default function EnhancedMainMenu({
   onShowRankedLobby,
   onShowNotifications,
   onShowNotificationTester,
+  onShowFirebaseTest,
   onShowFriends
 }) {
   const { logout, user } = useAuth();
@@ -87,6 +88,11 @@ export default function EnhancedMainMenu({
   const handleShowNotificationTester = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onShowNotificationTester();
+  };
+
+  const handleShowFirebaseTest = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onShowFirebaseTest();
   };
 
   const handleShowFriends = () => {
@@ -206,6 +212,11 @@ export default function EnhancedMainMenu({
             <TouchableOpacity style={styles.quickActionButton} onPress={handleShowNotificationTester}>
               <Ionicons name="flask" size={24} color="#fff" />
               <Text style={styles.quickActionText}>Test Notifications</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.quickActionButton} onPress={handleShowFirebaseTest}>
+              <Ionicons name="flame" size={24} color="#fff" />
+              <Text style={styles.quickActionText}>Firebase Test</Text>
             </TouchableOpacity>
           </View>
 

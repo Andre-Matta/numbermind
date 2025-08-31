@@ -3,14 +3,15 @@
 
 // Firebase configuration object
 // You'll need to replace these values with your actual Firebase project configuration
+// These values come from your Firebase Console project settings
 export const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "your-api-key",
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "your-project.firebaseapp.com",
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "your-project-id",
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "your-project.appspot.com",
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "123456789",
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || "your-app-id",
-  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || "your-measurement-id"
+  apiKey: "AIzaSyDS_3edlqT9XMWsqZ310e0JFH2SRGOC1Kg",
+  authDomain: "numbermind-11.firebaseapp.com",
+  projectId: "numbermind-11",
+  storageBucket: "numbermind-11.firebasestorage.app",
+  messagingSenderId: "721846929705",
+  appId: "1:721846929705:android:0623c6acc4bca1e7f40f38",
+  measurementId: "your-measurement-id" // Optional - add if you have Analytics enabled
 };
 
 // Firebase Cloud Messaging configuration
