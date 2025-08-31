@@ -1,5 +1,7 @@
 import NetInfo from '@react-native-community/netinfo';
 import { Alert } from 'react-native';
+import RealLANDiscovery from './RealLANDiscovery';
+import HTTPRoomDiscovery from './HTTPRoomDiscovery';
 
 class OfflineLANService {
   constructor() {
@@ -66,12 +68,24 @@ class OfflineLANService {
   startBroadcasting() {
     if (!this.isHost || !this.roomId || !this.localIP) return;
 
-    // Broadcast room info every 2 seconds
+    // Use real LAN discovery for broadcasting
+    const roomInfo = {
+      roomId: this.roomId,
+      hostIP: this.localIP,
+      port: this.port,
+      timestamp: Date.now(),
+      type: 'room_broadcast'
+    };
+
+    // Start real UDP broadcasting
+    RealLANDiscovery.startBroadcasting(roomInfo);
+
+    // Also keep the interval for fallback
     this.broadcastInterval = setInterval(() => {
-      this.broadcastRoomInfo();
+      RealLANDiscovery.startBroadcasting(roomInfo);
     }, 2000);
 
-    console.log('Started broadcasting room availability');
+    console.log('Started broadcasting room availability using real LAN discovery');
   }
 
   // Broadcast room information to local network
@@ -86,9 +100,26 @@ class OfflineLANService {
       type: 'room_broadcast'
     };
 
-    // In a real implementation, this would use UDP broadcast or mDNS
-    // For now, we'll simulate it by storing the room info locally
-    console.log('Broadcasting room info:', roomInfo);
+    // In a real implementation, this would:
+    // 1. Send UDP broadcast packets to the local network
+    // 2. Use mDNS/Bonjour to advertise the room service
+    // 3. Implement a simple protocol for room discovery
+    // 4. Handle responses from other devices
+    
+    // For now, we'll simulate broadcasting by logging the room info
+    console.log('📡 Broadcasting room info to local network:', {
+      roomId: roomInfo.roomId,
+      hostIP: roomInfo.hostIP,
+      port: roomInfo.port,
+      timestamp: new Date(roomInfo.timestamp).toLocaleTimeString()
+    });
+    
+    // In a real implementation, you would send this data to the network
+    // Example UDP broadcast implementation:
+    // const dgram = require('dgram');
+    // const socket = dgram.createSocket('udp4');
+    // const message = JSON.stringify(roomInfo);
+    // socket.send(message, 0, message.length, 8080, '255.255.255.255');
   }
 
   // Start discovering rooms on the local network
@@ -100,12 +131,11 @@ class OfflineLANService {
     // Don't clear rooms when starting discovery - keep existing rooms
     // This preserves host rooms that are still active
 
-    // Discover rooms every 3 seconds
-    this.discoveryInterval = setInterval(async () => {
-      await this.discoverRooms();
-    }, 3000);
+    // Start real LAN discovery
+    RealLANDiscovery.startListening();
 
-    console.log('Started room discovery');
+    // Don't start continuous discovery - only scan when requested
+    console.log('Started room discovery - will scan only when requested');
   }
 
   // Stop room discovery
@@ -115,10 +145,13 @@ class OfflineLANService {
       this.discoveryInterval = null;
     }
     
+    // Stop real LAN discovery
+    RealLANDiscovery.stop();
+    
     // Clear discovered rooms when stopping discovery
     this.rooms.clear();
     
-    console.log('Stopped room discovery');
+    console.log('Stopped room discovery and real LAN scanning');
   }
 
   // Discover available rooms on the local network
@@ -129,15 +162,11 @@ class OfflineLANService {
         return [];
       }
 
-      // Only simulate room discovery if we're actively discovering
-      // This prevents creating mock rooms during initialization
-      if (!this.discoveryInterval) {
-        return [];
-      }
-
-      // In a real implementation, this would scan for UDP broadcasts or mDNS services
-      // For now, we'll only return rooms that are actually being hosted
-      const discoveredRooms = [];
+      // Use real LAN discovery to scan the network
+      const networkDiscoveredRooms = await RealLANDiscovery.scanNetwork();
+      
+      // Combine network discovered rooms with our hosted room
+      const discoveredRooms = [...networkDiscoveredRooms];
       
       // If we're hosting a room, include it in discovery results
       if (this.isHost && this.roomId && this.localIP) {
@@ -149,13 +178,13 @@ class OfflineLANService {
           type: 'hosted_room'
         });
       }
-      
-      // In a real implementation, you would also scan the network for other hosted rooms
-      // For now, we'll just return the room we're hosting (if any)
-      
-      // Update discovered rooms
+
+      // Update discovered rooms - only add real rooms
       discoveredRooms.forEach(room => {
-        this.rooms.set(room.roomId, room);
+        // Only add rooms that are actually being hosted or discovered
+        if (room.type === 'hosted_room' || room.type === 'broadcasted_room' || room.type === 'room_advertisement') {
+          this.rooms.set(room.roomId, room);
+        }
       });
 
       // Notify about new rooms
@@ -163,46 +192,12 @@ class OfflineLANService {
         this.onRoomDiscovered(Array.from(this.rooms.values()));
       }
 
+      console.log(`✅ Network scan completed: Found ${discoveredRooms.length} real room(s)`);
       return Array.from(this.rooms.values());
     } catch (error) {
       console.error('Error discovering rooms:', error);
       return [];
     }
-  }
-
-  // Simulate room discovery (replace with real network scanning)
-  simulateRoomDiscovery() {
-    // This simulates finding rooms on the local network
-    // In reality, you'd implement UDP broadcast listening or mDNS discovery
-    const mockRooms = [];
-    
-    // Simulate finding 1-3 rooms on the network
-    const roomCount = Math.floor(Math.random() * 3) + 1;
-    
-    for (let i = 0; i < roomCount; i++) {
-      const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
-      const hostIP = this.generateMockIP();
-      
-      mockRooms.push({
-        roomId,
-        hostIP,
-        port: this.port,
-        timestamp: Date.now() - Math.random() * 10000, // Random timestamp
-        type: 'discovered_room'
-      });
-    }
-
-    return mockRooms;
-  }
-
-  // Generate a mock IP address for testing
-  generateMockIP() {
-    const segments = [];
-    segments.push(192);
-    segments.push(168);
-    segments.push(1);
-    segments.push(Math.floor(Math.random() * 254) + 1);
-    return segments.join('.');
   }
 
   // Join a room using connection info (no internet required)
@@ -406,6 +401,9 @@ class OfflineLANService {
     // Stop discovery if client
     this.stopDiscovery();
 
+    // Stop real LAN discovery
+    RealLANDiscovery.stop();
+
     // Clear peers but keep room info for reconnection
     this.connectedPeers.clear();
     
@@ -413,7 +411,7 @@ class OfflineLANService {
     this.roomId = null;
     this.isHost = false;
     this.isConnected = false;
-    console.log('Disconnected from offline room');
+    console.log('Disconnected from offline room and stopped LAN discovery');
   }
 
   // End game and optionally clear the room
@@ -555,6 +553,9 @@ class OfflineLANService {
       }
       
       this.rooms.delete(roomId);
+      
+      // Also remove from HTTP room discovery service
+      HTTPRoomDiscovery.removeRoom(roomId);
       
       // Notify about updated rooms
       if (this.onRoomDiscovered) {

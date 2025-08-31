@@ -13,6 +13,8 @@
     "@expo/vector-icons": "^14.1.0",
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-native-community/netinfo": "^11.4.1",
+    "@react-native-firebase/app": "^22.4.0",
+    "@react-native-firebase/messaging": "^22.4.0",
     "expo": "~53.0.22",
     "expo-clipboard": "~7.1.5",
     "expo-dev-client": "~5.2.4",
@@ -26,9 +28,8 @@
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
     "react-native-tab-view": "^3.5.2",
-    "socket.io-client": "^4.8.1",
-    "@react-native-firebase/app": "^22.4.0",
-    "@react-native-firebase/messaging": "^22.4.0"
+    "react-native-udp": "^4.1.7",
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "@babel/core": "^7.28.3",

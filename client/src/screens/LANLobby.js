@@ -287,6 +287,15 @@ export default function LANLobby({ onGameStart, onBack }) {
           console.log(`Discovery completed: Found ${updatedRooms.length} room(s)`);
         } else {
           console.log('Discovery completed: No rooms found');
+          // Show helpful message when no rooms are found
+          Alert.alert(
+            'No Rooms Found', 
+            'No LAN rooms were discovered on your network.\n\n' +
+            '• Make sure other devices are hosting rooms\n' +
+            '• Try creating a room yourself\n' +
+            '• Check that all devices are on the same WiFi network',
+            [{ text: 'OK' }]
+          );
         }
       }, 2000);
     } catch (error) {

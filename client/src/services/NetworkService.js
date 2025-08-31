@@ -14,6 +14,11 @@ class NetworkService {
     this.connectionRetries = 0;
     this.maxRetries = 3;
     
+    // Multiple rooms support
+    this.hostedRooms = []; // Array of rooms I'm hosting
+    this.joinedRooms = []; // Array of rooms I've joined
+    this.availableRooms = []; // Array of available rooms from server
+    
     // Event callbacks
     this.onGameStart = null;
     this.onPlayerJoined = null;
@@ -24,6 +29,7 @@ class NetworkService {
     this.onDisconnect = null;
     this.onRoomReady = null;
     this.onConnectionError = null;
+    this.onRoomsUpdated = null; // New callback for room list updates
   }
 
   // Initialize connection to server
@@ -229,8 +235,23 @@ class NetworkService {
           clearTimeout(timeout);
           
           if (response && response.success) {
+            // Add the new room to hosted rooms
+            const newRoom = {
+              roomId: response.roomId,
+              hostName: 'You',
+              players: 1,
+              maxPlayers: 2,
+              timestamp: Date.now(),
+              type: 'hosted_room'
+            };
+            
+            this.hostedRooms.push(newRoom);
             this.roomId = response.roomId;
             this.isHost = true;
+            
+            // Notify UI about room update
+            this.notifyRoomsUpdated();
+            
             resolve(response);
           } else {
             reject(new Error(response?.error || 'Failed to create room'));
@@ -266,8 +287,26 @@ class NetworkService {
           clearTimeout(timeout);
           
           if (response && response.success) {
+            // Add the room to joined rooms if not already there
+            const existingJoinedRoom = this.joinedRooms.find(room => room.roomId === roomId);
+            if (!existingJoinedRoom) {
+              const joinedRoom = {
+                roomId: response.roomId,
+                hostName: response.hostName || 'Other Player',
+                players: response.players || 2,
+                maxPlayers: response.maxPlayers || 2,
+                timestamp: Date.now(),
+                type: 'joined_room'
+              };
+              this.joinedRooms.push(joinedRoom);
+            }
+            
             this.roomId = response.roomId;
             this.isHost = false;
+            
+            // Notify UI about room update
+            this.notifyRoomsUpdated();
+            
             resolve(response);
           } else {
             reject(new Error(response?.error || 'Failed to join room'));
@@ -357,17 +396,30 @@ class NetworkService {
   }
 
   // Leave room
-  leaveRoom() {
-    if (this.socket && this.roomId) {
+  leaveRoom(roomId = null) {
+    const targetRoomId = roomId || this.roomId;
+    
+    if (this.socket && targetRoomId) {
       try {
-        this.socket.emit('leaveRoom', { roomId: this.roomId });
+        this.socket.emit('leaveRoom', { roomId: targetRoomId });
       } catch (error) {
         console.error('Error leaving room:', error);
       }
       
-      // Clean up local state
-      this.roomId = null;
-      this.isHost = false;
+      // Remove from hosted rooms if it's a hosted room
+      this.hostedRooms = this.hostedRooms.filter(room => room.roomId !== targetRoomId);
+      
+      // Remove from joined rooms if it's a joined room
+      this.joinedRooms = this.joinedRooms.filter(room => room.roomId !== targetRoomId);
+      
+      // If this was the current room, clear current room state
+      if (targetRoomId === this.roomId) {
+        this.roomId = null;
+        this.isHost = false;
+      }
+      
+      // Notify UI about room update
+      this.notifyRoomsUpdated();
     }
   }
 
@@ -431,6 +483,9 @@ class NetworkService {
     this.playerId = null;
     this.isConnecting = false;
     this.connectionPromise = null;
+    this.hostedRooms = []; // Reset hosted rooms
+    this.joinedRooms = []; // Reset joined rooms
+    this.availableRooms = []; // Reset available rooms
   }
 
   // Force disconnect and cleanup (for when connection is lost unexpectedly)
@@ -447,6 +502,7 @@ class NetworkService {
     this.onDisconnect = null;
     this.onRoomReady = null;
     this.onConnectionError = null;
+    this.onRoomsUpdated = null; // Clear new callback
     
     // Clean up socket
     if (this.socket) {
@@ -460,6 +516,7 @@ class NetworkService {
         this.socket.off('gameEnded');
         this.socket.off('playerTyping');
         this.socket.off('roomReady');
+        this.socket.off('roomsUpdated'); // Remove new listener
       } catch (error) {
         console.error('Error cleaning up socket listeners:', error);
       }
@@ -472,6 +529,9 @@ class NetworkService {
     this.playerId = null;
     this.isConnecting = false;
     this.connectionPromise = null;
+    this.hostedRooms = []; // Reset hosted rooms
+    this.joinedRooms = []; // Reset joined rooms
+    this.availableRooms = []; // Reset available rooms
   }
 
   // Get local IP address for LAN discovery
@@ -538,6 +598,157 @@ class NetworkService {
     };
   }
 
+  // Get all rooms info (multiple rooms support)
+  getAllRoomsInfo() {
+    return {
+      hostedRooms: this.hostedRooms,
+      joinedRooms: this.joinedRooms,
+      availableRooms: this.availableRooms,
+      currentRoomId: this.roomId,
+      isHost: this.isHost,
+      playerId: this.playerId,
+    };
+  }
+
+  // Get hosted rooms (rooms I'm hosting)
+  getHostedRooms() {
+    return this.hostedRooms;
+  }
+
+  // Get joined rooms (rooms I've joined)
+  getJoinedRooms() {
+    return this.joinedRooms;
+  }
+
+  // Get available rooms (from server)
+  getAvailableRooms() {
+    return this.availableRooms;
+  }
+
+  // Refresh available rooms from server
+  refreshAvailableRooms() {
+    return new Promise((resolve, reject) => {
+      if (!this.socket || !this.socket.connected) {
+        reject(new Error('Not connected to server'));
+        return;
+      }
+
+      // Add timeout to prevent hanging
+      const timeout = setTimeout(() => {
+        reject(new Error('Request timed out'));
+      }, 10000);
+
+      try {
+        this.socket.emit('getAvailableRooms', {}, (response) => {
+          clearTimeout(timeout);
+          
+          if (response && response.success) {
+            // Filter out rooms I'm hosting or have joined
+            const myRoomIds = [
+              ...this.hostedRooms.map(room => room.roomId),
+              ...this.joinedRooms.map(room => room.roomId)
+            ];
+            
+            this.availableRooms = response.rooms.filter(room => 
+              !myRoomIds.includes(room.roomId)
+            );
+            
+            // Notify UI about room update
+            this.notifyRoomsUpdated();
+            
+            resolve(this.availableRooms);
+          } else {
+            reject(new Error(response?.error || 'Failed to get available rooms'));
+          }
+        });
+      } catch (error) {
+        clearTimeout(timeout);
+        reject(error);
+      }
+    });
+  }
+
+  // Delete a specific room (only for hosted rooms)
+  deleteRoom(roomId) {
+    if (!roomId) {
+      throw new Error('Room ID is required');
+    }
+
+    // Check if this is a room I'm hosting
+    const isHostedRoom = this.hostedRooms.some(room => room.roomId === roomId);
+    if (!isHostedRoom) {
+      throw new Error('You can only delete rooms you are hosting');
+    }
+
+    // Leave the room (this will delete it on the server)
+    this.leaveRoom(roomId);
+    
+    return true;
+  }
+
+  // Set current room (for game start)
+  setCurrentRoom(roomId) {
+    const hostedRoom = this.hostedRooms.find(room => room.roomId === roomId);
+    const joinedRoom = this.joinedRooms.find(room => room.roomId === roomId);
+    
+    if (hostedRoom) {
+      this.roomId = roomId;
+      this.isHost = true;
+      return true;
+    } else if (joinedRoom) {
+      this.roomId = roomId;
+      this.isHost = false;
+      return true;
+    } else {
+      throw new Error('Room not found in your rooms');
+    }
+  }
+
+  // Get current room info (for UI display)
+  getCurrentRoomInfo() {
+    return {
+      roomId: this.roomId,
+      isHost: this.isHost,
+      playerId: this.playerId,
+    };
+  }
+
+  // Check if a specific room is the current room
+  isCurrentRoom(roomId) {
+    return this.roomId === roomId;
+  }
+
+  // Check if we're hosting a specific room
+  isHostingRoom(roomId) {
+    return this.hostedRooms.some(room => room.roomId === roomId);
+  }
+
+  // Check if we've joined a specific room
+  hasJoinedRoom(roomId) {
+    return this.joinedRooms.some(room => room.roomId === roomId);
+  }
+
+  // Notify UI about room updates
+  notifyRoomsUpdated() {
+    if (this.onRoomsUpdated) {
+      this.onRoomsUpdated({
+        hostedRooms: this.hostedRooms,
+        joinedRooms: this.joinedRooms,
+        availableRooms: this.availableRooms
+      });
+    }
+  }
+
+  // Clear all rooms (for cleanup)
+  clearAllRooms() {
+    this.hostedRooms = [];
+    this.joinedRooms = [];
+    this.availableRooms = [];
+    this.roomId = null;
+    this.isHost = false;
+    this.notifyRoomsUpdated();
+  }
+
   // Send typing update
   sendTypingUpdate(isTyping, currentInput = '') {
     if (!this.socket || !this.roomId || !this.socket.connected) return;
@@ -586,6 +797,7 @@ class NetworkService {
         this.socket.off('gameEnded');
         this.socket.off('playerTyping');
         this.socket.off('roomReady');
+        this.socket.off('roomsUpdated'); // Remove new listener
       } catch (error) {
         console.error('Error cleaning up event listeners:', error);
       }

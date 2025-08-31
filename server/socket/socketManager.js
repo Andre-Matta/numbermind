@@ -260,6 +260,50 @@ const setupSocketIO = (server) => {
       }
     });
 
+    // Handle getting available rooms
+    socket.on('getAvailableRooms', async (data, callback) => {
+      try {
+        // Ensure callback is a function
+        if (typeof callback !== 'function') {
+          console.error('getAvailableRooms: callback is not a function');
+          return;
+        }
+
+        console.log(`🔍 User ${socket.user.username} requesting available rooms`);
+        
+        // Get all waiting rooms that are not full
+        const availableRooms = [];
+        
+        for (const [roomId, game] of gameRooms.entries()) {
+          if (game.gameState === 'waiting' && game.players.length < game.maxPlayers) {
+            // Get host user info
+            const hostUser = await User.findById(game.host).select('username');
+            
+            availableRooms.push({
+              roomId,
+              hostName: hostUser ? hostUser.username : 'Unknown',
+              players: game.players.length,
+              maxPlayers: game.maxPlayers,
+              timestamp: game.createdAt,
+              type: 'available_room'
+            });
+          }
+        }
+
+        console.log(`✅ Found ${availableRooms.length} available rooms`);
+
+        callback({
+          success: true,
+          rooms: availableRooms
+        });
+      } catch (error) {
+        console.error('Error getting available rooms:', error);
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to get available rooms' });
+        }
+      }
+    });
+
     // Handle ranked matchmaking
     socket.on('joinRankedQueue', async (data, callback) => {
       try {

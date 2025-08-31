@@ -19,40 +19,53 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
   const [connectionStatus, setConnectionStatus] = useState('connecting');
   const [roomId, setRoomId] = useState('');
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
-  const [isJoiningRoom, setIsJoiningRoom] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDiscovering, setIsDiscovering] = useState(false);
   const [availableRooms, setAvailableRooms] = useState([]);
-  const [myRooms, setMyRooms] = useState([]);
-  const [joinedRooms, setJoinedRooms] = useState([]);
 
   useEffect(() => {
-    autoConnectToServer();
+    initializeInternetMultiplayer();
     return () => {
-      // Don't disconnect when component unmounts to preserve connections
-      console.log('MultiplayerLobby unmounting - preserving connections');
+      // Don't clear rooms or disconnect when component unmounts
+      // This preserves rooms when navigating between screens
+      // Rooms will only be cleared when explicitly requested by the user
+      console.log('MultiplayerLobby unmounting - preserving rooms for navigation');
     };
   }, []);
 
-  const autoConnectToServer = async () => {
+  const initializeInternetMultiplayer = async () => {
     try {
-      console.log('Auto-connecting to internet server...');
+      console.log('Initializing internet multiplayer...');
       await NetworkService.connect();
       setConnectionStatus('connected');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
       // Set up room discovery callback
-      NetworkService.onPlayerJoined = (data) => {
-        console.log('Player joined room:', data);
-        refreshRooms();
+      NetworkService.onRoomsUpdated = (rooms) => {
+        // Only update rooms if we're not in the middle of discovery
+        if (!isDiscovering) {
+          // Combine hosted rooms with available rooms
+          let updatedRooms = [...rooms.hostedRooms];
+          
+          // Add available rooms that we're not hosting
+          const hostedRoomIds = rooms.hostedRooms.map(room => room.roomId);
+          const availableRoomsFromServer = rooms.availableRooms.filter(room => 
+            !hostedRoomIds.includes(room.roomId)
+          );
+          updatedRooms = [...updatedRooms, ...availableRoomsFromServer];
+          
+          setAvailableRooms(updatedRooms);
+        }
       };
       
-      NetworkService.onPlayerLeft = (data) => {
-        console.log('Player left room:', data);
-        refreshRooms();
-      };
+      // Check if we have existing rooms or connection state to restore
+      const serviceStatus = NetworkService.getAllRoomsInfo();
+      if (serviceStatus.hostedRooms && serviceStatus.hostedRooms.length > 0) {
+        console.log('Restoring existing hosted rooms:', serviceStatus.hostedRooms.length);
+        setAvailableRooms(serviceStatus.hostedRooms);
+      }
       
       // Initial room refresh
-      await refreshRooms();
+      await refreshInternetRooms();
     } catch (error) {
       setConnectionStatus('disconnected');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -71,106 +84,45 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
     }
   };
 
-  const refreshRooms = async () => {
-    if (!NetworkService.isConnected()) {
-      Alert.alert('Error', 'Not connected to internet server');
+  const createInternetRoom = async () => {
+    if (connectionStatus !== 'connected') {
+      Alert.alert('Error', 'Internet connection required for multiplayer');
       return;
     }
 
-    setIsRefreshing(true);
-    try {
-      // Get rooms from the network service
-      const roomInfo = NetworkService.getRoomInfo();
-      
-      // For now, we'll simulate available rooms since the server doesn't provide a list
-      // In a real implementation, you'd emit a 'getAvailableRooms' event to the server
-      const mockAvailableRooms = [
-        {
-          roomId: 'ABC123',
-          hostName: 'Player1',
-          players: 1,
-          maxPlayers: 2,
-          timestamp: Date.now() - 300000, // 5 minutes ago
-          type: 'available_room'
-        },
-        {
-          roomId: 'DEF456',
-          hostName: 'Player2',
-          players: 1,
-          maxPlayers: 2,
-          timestamp: Date.now() - 600000, // 10 minutes ago
-          type: 'available_room'
-        }
-      ];
-
-      // Update my rooms (rooms I'm hosting)
-      if (roomInfo.isHost && roomInfo.roomId) {
-        const myRoom = {
-          roomId: roomInfo.roomId,
-          hostName: 'You',
-          players: 1,
-          maxPlayers: 2,
-          timestamp: Date.now(),
-          type: 'my_room'
-        };
-        setMyRooms([myRoom]);
-      } else {
-        setMyRooms([]);
-      }
-
-      // Update joined rooms (rooms I've joined but don't host)
-      if (roomInfo.roomId && !roomInfo.isHost) {
-        const joinedRoom = {
-          roomId: roomInfo.roomId,
-          hostName: 'Other Player',
-          players: 2,
-          maxPlayers: 2,
-          timestamp: Date.now(),
-          type: 'joined_room'
-        };
-        setJoinedRooms([joinedRoom]);
-      } else {
-        setJoinedRooms([]);
-      }
-
-      // Set available rooms (excluding my rooms and joined rooms)
-      const myRoomIds = myRooms.map(room => room.roomId);
-      const joinedRoomIds = joinedRooms.map(room => room.roomId);
-      const filteredAvailableRooms = mockAvailableRooms.filter(
-        room => !myRoomIds.includes(room.roomId) && !joinedRoomIds.includes(room.roomId)
-      );
-      setAvailableRooms(filteredAvailableRooms);
-
-      setIsRefreshing(false);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (error) {
-      setIsRefreshing(false);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Error', 'Failed to refresh rooms: ' + error.message);
-    }
+    // Unlike LAN lobby, we allow multiple hosted rooms
+    // No need to check for existing rooms - just create a new one
+    await createNewRoom();
   };
 
-  const createRoom = async () => {
-    if (!NetworkService.isConnected()) {
-      Alert.alert('Error', 'Not connected to internet server');
-      return;
-    }
-
+  // Helper function to create a new room
+  const createNewRoom = async () => {
     setIsCreatingRoom(true);
     try {
       console.log('Creating internet room...');
+      
       const response = await NetworkService.createRoom();
       console.log('Internet room created successfully:', response);
       
       setRoomId(response.roomId);
       setIsCreatingRoom(false);
       
+      // Add the new room to available rooms list (prepend to show newest first)
+      const newRoom = {
+        roomId: response.roomId,
+        hostName: 'You',
+        players: 1,
+        maxPlayers: 2,
+        timestamp: Date.now(),
+        type: 'hosted_room'
+      };
+      setAvailableRooms(prev => [newRoom, ...prev]);
+      
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
-      // Show room created with copy option
       Alert.alert(
         'Internet Room Created!',
-        `Room ID: ${response.roomId}\n\nShare this code with your friend to start playing over the internet!`,
+        `Room ID: ${response.roomId}\n\nShare this code with friends to start playing over the internet!`,
         [
           { 
             text: 'Copy Code', 
@@ -185,70 +137,125 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
             }
           },
           { 
-            text: 'Start Game', 
+            text: 'Start Game Now', 
             onPress: () => {
               onGameStart(response.roomId);
             }
           },
-          { text: 'OK' }
+          { 
+            text: 'OK', 
+            onPress: () => {
+              // Don't auto-start the game - let user decide when to start
+              console.log('Room created successfully - waiting for user to start game');
+            }
+          }
         ]
       );
-
-      // Refresh rooms to show the new room
-      await refreshRooms();
     } catch (error) {
       console.error('Error creating internet room:', error);
       setIsCreatingRoom(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      
-      let errorMessage = 'Failed to create internet room';
-      if (error.message) {
-        errorMessage = error.message;
-      } else if (error.type === 'timeout') {
-        errorMessage = 'Request timed out. Internet server might be sleeping or unreachable.';
-      }
-      
-      Alert.alert('Error', errorMessage);
+      Alert.alert('Error', error.message || 'Failed to create internet room');
     }
   };
 
-  const joinRoom = async (roomIdToJoin = null) => {
-    if (!NetworkService.isConnected()) {
-      Alert.alert('Error', 'Not connected to internet server');
+  const joinInternetRoom = async (roomIdToJoin = null) => {
+    if (connectionStatus !== 'connected') {
+      Alert.alert('Error', 'Internet connection required for multiplayer');
       return;
     }
 
+    // Use the passed roomId or the state roomId
     const targetRoomId = roomIdToJoin || roomId;
     
     if (!targetRoomId || !targetRoomId.trim()) {
-      Alert.alert('Error', 'Please enter a room ID');
+      Alert.alert('Error', 'Please select a room to join');
       return;
     }
 
-    setIsJoiningRoom(true);
+    // Check if the room actually exists in available rooms
+    const roomExists = availableRooms.some(room => room.roomId === targetRoomId.trim());
+    if (!roomExists) {
+      Alert.alert('Room Not Found', 'This room ID does not exist. Please check the room ID or refresh to discover available rooms.');
+      return;
+    }
+
     try {
-      await NetworkService.joinRoom(targetRoomId.trim());
+      // Find the room details from available rooms
+      const targetRoom = availableRooms.find(room => room.roomId === targetRoomId.trim());
+      if (!targetRoom) {
+        throw new Error('Room not found');
+      }
+
+      await NetworkService.joinRoom(targetRoom.roomId);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
       // Set the roomId state to the joined room
       setRoomId(targetRoomId.trim());
       
       Alert.alert('Success', 'Joined internet room successfully!\n\nYou can now start the game!');
-      
-      // Refresh rooms to update the UI
-      await refreshRooms();
+      // Don't auto-start the game - let user decide when to start
+      console.log('Joined room successfully - waiting for user to start game');
     } catch (error) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Error', error.message || 'Failed to join internet room');
-    } finally {
-      setIsJoiningRoom(false);
+    }
+  };
+
+  const refreshInternetRooms = async () => {
+    if (connectionStatus !== 'connected') {
+      Alert.alert('Error', 'Internet connection required for multiplayer');
+      return;
+    }
+    
+    setIsDiscovering(true);
+    
+    try {
+      // Refresh available rooms from server
+      const rooms = await NetworkService.refreshAvailableRooms();
+      
+      // Get hosted rooms from service
+      const hostedRooms = NetworkService.getHostedRooms();
+      
+      // Combine hosted rooms with available rooms
+      let updatedRooms = [...hostedRooms];
+      
+      // Add available rooms that we're not hosting
+      const hostedRoomIds = hostedRooms.map(room => room.roomId);
+      const availableRoomsFromServer = rooms.filter(room => 
+        !hostedRoomIds.includes(room.roomId)
+      );
+      updatedRooms = [...updatedRooms, ...availableRoomsFromServer];
+      
+      setAvailableRooms(updatedRooms);
+      setIsDiscovering(false);
+      
+      if (updatedRooms.length > 0) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        console.log(`Discovery completed: Found ${updatedRooms.length} room(s)`);
+      } else {
+        console.log('Discovery completed: No rooms found');
+        // Show helpful message when no rooms are found
+        Alert.alert(
+          'No Rooms Found', 
+          'No internet rooms were discovered.\n\n' +
+          '• Make sure other players are hosting rooms\n' +
+          '• Try creating a room yourself\n' +
+          '• Check your internet connection',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      setIsDiscovering(false);
+      Alert.alert('Internet Discovery Error', error.message);
     }
   };
 
   const handleDeleteRoom = async (roomIdToDelete) => {
     // Security check: Only allow deleting rooms you're hosting
-    const roomInfo = NetworkService.getRoomInfo();
-    if (!roomInfo.isHost || roomInfo.roomId !== roomIdToDelete) {
+    const hostedRooms = NetworkService.getHostedRooms();
+    const isHostedRoom = hostedRooms.some(room => room.roomId === roomIdToDelete);
+    if (!isHostedRoom) {
       Alert.alert('Access Denied', 'You can only delete rooms you are hosting.');
       return;
     }
@@ -263,18 +270,19 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Leave the room (this will delete it on the server)
-              NetworkService.leaveRoom();
+              // Delete the room
+              NetworkService.deleteRoom(roomIdToDelete);
               
               // Update local state
-              setMyRooms(prev => prev.filter(room => room.roomId !== roomIdToDelete));
-              setRoomId('');
+              setAvailableRooms(prev => prev.filter(room => room.roomId !== roomIdToDelete));
+              
+              // If this was the selected room, clear it
+              if (roomIdToDelete === roomId) {
+                setRoomId('');
+              }
               
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               Alert.alert('Success', 'Room deleted successfully');
-              
-              // Refresh rooms
-              await refreshRooms();
             } catch (error) {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
               Alert.alert('Error', 'Failed to delete room: ' + error.message);
@@ -301,22 +309,26 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
     }
   };
 
+  // Clean up Network service when actually exiting (not just navigating)
+  const cleanupNetworkService = () => {
+    console.log('Cleaning up Network service...');
+    NetworkService.clearAllRooms();
+    NetworkService.disconnect();
+  };
+
   // Handle back navigation with cleanup option
   const handleBack = () => {
-    if (roomId || myRooms.length > 0 || joinedRooms.length > 0) {
+    if (roomId || availableRooms.length > 0) {
       Alert.alert(
         'Exit Internet Multiplayer?',
-        'Do you want to exit and leave all rooms?',
+        'Do you want to exit and clear all rooms?',
         [
           { text: 'Cancel', style: 'cancel' },
           { 
-            text: 'Exit & Leave Rooms', 
+            text: 'Exit & Clear', 
             style: 'destructive',
             onPress: () => {
-              // Leave all rooms
-              if (roomId) {
-                NetworkService.leaveRoom();
-              }
+              cleanupNetworkService();
               onBack();
             }
           },
@@ -331,68 +343,6 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
     } else {
       onBack();
     }
-  };
-
-  const renderRoomItem = (room, index) => {
-    const isMyRoom = room.type === 'my_room';
-    const isJoinedRoom = room.type === 'joined_room';
-    const isAvailableRoom = room.type === 'available_room';
-
-    return (
-      <View key={index} style={styles.roomItemContainer}>
-        <TouchableOpacity
-          style={[
-            styles.roomItem,
-            isMyRoom ? styles.myRoomItem : null,
-            isJoinedRoom ? styles.joinedRoomItem : null
-          ]}
-          onPress={async () => {
-            try {
-              if (isMyRoom) {
-                // If it's my room, start the game directly
-                console.log('🏠 My room - starting game directly');
-                onGameStart(room.roomId);
-              } else if (isJoinedRoom) {
-                // If I'm already joined, start the game directly
-                console.log('👤 Already joined - starting game directly');
-                onGameStart(room.roomId);
-              } else if (isAvailableRoom) {
-                // If it's an available room, join it first
-                console.log('👤 Joining available room');
-                await joinRoom(room.roomId);
-              }
-            } catch (error) {
-              // Error handling is already in joinRoom
-            }
-          }}
-        >
-          <Text style={styles.roomIdText}>
-            {isMyRoom ? (
-              <>Room: {room.roomId} (Your Room)</>
-            ) : (
-              `Room: ${room.roomId}`
-            )}
-          </Text>
-          <Text style={styles.roomHostText}>Host: {room.hostName}</Text>
-          <Text style={styles.roomPlayersText}>Players: {room.players}/{room.maxPlayers}</Text>
-          <Text style={styles.roomJoinText}>
-            {isMyRoom ? '🏠 Your room - Tap to start' : 
-             isJoinedRoom ? '👤 Joined - Tap to start' : 
-             '🎮 Tap to join'}
-          </Text>
-        </TouchableOpacity>
-        
-        {/* Only show delete button for rooms you're hosting */}
-        {isMyRoom && (
-          <TouchableOpacity
-            style={[styles.deleteRoomButton, styles.myRoomDeleteButton]}
-            onPress={() => handleDeleteRoom(room.roomId)}
-          >
-            <Ionicons name="trash-outline" size={20} color="#dc3545" />
-          </TouchableOpacity>
-        )}
-      </View>
-    );
   };
 
   return (
@@ -426,7 +376,7 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
             <View style={styles.buttonRow}>
               <TouchableOpacity
                 style={[styles.button, styles.createButton]}
-                onPress={createRoom}
+                onPress={createInternetRoom}
                 disabled={isCreatingRoom}
               >
                 {isCreatingRoom ? (
@@ -438,67 +388,15 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
               
               <TouchableOpacity
                 style={[styles.button, styles.refreshButton]}
-                onPress={refreshRooms}
-                disabled={isRefreshing}
+                onPress={refreshInternetRooms}
               >
-                {isRefreshing ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.buttonText}>Refresh Rooms</Text>
-                )}
+                <Text style={styles.buttonText}>Refresh Rooms</Text>
               </TouchableOpacity>
             </View>
-
-            {/* Manual Join Room */}
-            <View style={styles.manualJoinContainer}>
-              <Text style={styles.manualJoinTitle}>Join Room by Code:</Text>
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={styles.input}
-                  value={roomId}
-                  onChangeText={setRoomId}
-                  placeholder="Enter room code"
-                  placeholderTextColor="#6c757d"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                <TouchableOpacity
-                  style={[styles.button, styles.joinButton]}
-                  onPress={() => joinRoom()}
-                  disabled={isJoiningRoom || !roomId.trim()}
-                >
-                  {isJoiningRoom ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={styles.buttonText}>Join</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* My Rooms (Rooms I'm Hosting) */}
-            {myRooms.length > 0 && (
-              <View style={styles.roomsSection}>
-                <Text style={styles.roomsSectionTitle}>My Rooms (Hosting):</Text>
-                <View style={styles.roomsList}>
-                  {myRooms.map((room, index) => renderRoomItem(room, index))}
-                </View>
-              </View>
-            )}
-
-            {/* Joined Rooms (Rooms I've Joined) */}
-            {joinedRooms.length > 0 && (
-              <View style={styles.roomsSection}>
-                <Text style={styles.roomsSectionTitle}>Joined Rooms:</Text>
-                <View style={styles.roomsList}>
-                  {joinedRooms.map((room, index) => renderRoomItem(room, index))}
-                </View>
-              </View>
-            )}
-
-            {/* Available Rooms */}
-            <View style={styles.roomsSection}>
-              <Text style={styles.roomsSectionTitle}>Available Internet Rooms:</Text>
+             
+            {/* Available Internet Rooms */}
+            <View style={styles.internetRoomsContainer}>
+              <Text style={styles.internetRoomsTitle}>Available Internet Rooms:</Text>
               
               {/* Room Management Info */}
               <Text style={styles.roomManagementInfo}>
@@ -507,22 +405,22 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
               
               {/* Current Room Status */}
               {(() => {
-                const roomInfo = NetworkService.getRoomInfo();
-                if (roomInfo.isHost && roomInfo.roomId) {
+                const currentRoomInfo = NetworkService.getCurrentRoomInfo();
+                if (currentRoomInfo.isHost && currentRoomInfo.roomId) {
                   return (
                     <View style={styles.currentRoomStatus}>
                       <Ionicons name="home" size={16} color="#28a745" />
                       <Text style={styles.currentRoomStatusText}>
-                        Hosting: {roomInfo.roomId}
+                        Hosting: {currentRoomInfo.roomId}
                       </Text>
                     </View>
                   );
-                } else if (roomInfo.roomId && !roomInfo.isHost) {
+                } else if (currentRoomInfo.roomId && !currentRoomInfo.isHost) {
                   return (
                     <View style={styles.currentRoomStatus}>
                       <Ionicons name="people" size={16} color="#4a90e2" />
                       <Text style={styles.currentRoomStatusText}>
-                        Joined: {roomInfo.roomId}
+                        Joined: {currentRoomInfo.roomId}
                       </Text>
                     </View>
                   );
@@ -530,15 +428,93 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
                 return null;
               })()}
               
-              {isRefreshing ? (
-                <View style={styles.refreshingContainer}>
+              {isDiscovering ? (
+                <View style={styles.discoveringContainer}>
                   <ActivityIndicator color="#4a90e2" size="small" />
-                  <Text style={styles.refreshingText}>Refreshing rooms...</Text>
+                  <Text style={styles.discoveringText}>Discovering rooms...</Text>
                 </View>
               ) : availableRooms.length > 0 ? (
-                <View style={styles.roomsList}>
-                  {availableRooms.map((room, index) => renderRoomItem(room, index))}
-                </View>
+                <ScrollView style={styles.roomsList}>
+                  {availableRooms.map((room, index) => (
+                    <View key={index} style={styles.roomItemContainer}>
+                      <TouchableOpacity
+                        style={[
+                          styles.roomItem,
+                          (() => {
+                            const isHostingThisRoom = NetworkService.isHostingRoom(room.roomId);
+                            return isHostingThisRoom ? styles.ownRoomItem : null;
+                          })()
+                        ]}
+                        onPress={async () => {
+                          try {
+                            // Check if we're hosting this room
+                            const isHostingThisRoom = NetworkService.isHostingRoom(room.roomId);
+                            const hasJoinedThisRoom = NetworkService.hasJoinedRoom(room.roomId);
+                            
+                            if (isHostingThisRoom) {
+                              // If we're hosting this room, set it as current and start the game
+                              console.log('🏠 Host detected - setting as current room and starting game');
+                              NetworkService.setCurrentRoom(room.roomId);
+                              onGameStart(room.roomId);
+                            } else if (hasJoinedThisRoom) {
+                              // If we've joined this room, set it as current and start the game
+                              console.log('👤 Already joined to room - setting as current and starting game');
+                              NetworkService.setCurrentRoom(room.roomId);
+                              onGameStart(room.roomId);
+                            } else {
+                              // If we're not joined, join the room first
+                              console.log('👤 Joining room as player');
+                              await joinInternetRoom(room.roomId);
+                            }
+                          } catch (error) {
+                            // Error handling is already in joinInternetRoom
+                          }
+                        }}
+                      >
+                        <Text style={styles.roomIdText}>
+                          {(() => {
+                            const isHostingThisRoom = NetworkService.isHostingRoom(room.roomId);
+                            return isHostingThisRoom ? (
+                              <>
+                                Room: {room.roomId} (Your Room)
+                              </>
+                            ) : (
+                              `Room: ${room.roomId}`
+                            );
+                          })()}
+                        </Text>
+                        <Text style={styles.roomHostText}>Host: {room.hostName}</Text>
+                        <Text style={styles.roomPlayersText}>Players: {room.players}/{room.maxPlayers}</Text>
+                        <Text style={styles.roomJoinText}>
+                          {(() => {
+                            const isHostingThisRoom = NetworkService.isHostingRoom(room.roomId);
+                            const hasJoinedThisRoom = NetworkService.hasJoinedRoom(room.roomId);
+                            
+                            if (isHostingThisRoom) {
+                              return '🏠 Your room - Tap to start';
+                            } else if (hasJoinedThisRoom) {
+                              return '👤 Joined - Tap to start';
+                            } else {
+                              return '🎮 Tap to join';
+                            }
+                          })()}
+                        </Text>
+                      </TouchableOpacity>
+                      {/* Only show delete button for rooms you're hosting */}
+                      {(() => {
+                        const isHostingThisRoom = NetworkService.isHostingRoom(room.roomId);
+                        return isHostingThisRoom ? (
+                          <TouchableOpacity
+                            style={[styles.deleteRoomButton, styles.ownRoomDeleteButton]}
+                            onPress={() => handleDeleteRoom(room.roomId)}
+                          >
+                            <Ionicons name="trash-outline" size={20} color="#dc3545" />
+                          </TouchableOpacity>
+                        ) : null;
+                      })()}
+                    </View>
+                  ))}
+                </ScrollView>
               ) : (
                 <Text style={styles.noRoomsText}>No internet rooms found. Create a room to start!</Text>
               )}
@@ -637,11 +613,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 10,
   },
-  joinButton: {
-    backgroundColor: '#6f42c1',
-    marginLeft: 10,
-    flex: 0.3,
-  },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -652,41 +623,24 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
-  manualJoinContainer: {
-    marginBottom: 20,
-  },
-  manualJoinTitle: {
-    fontSize: 16,
-    color: '#fff',
+  roomManagementInfo: {
+    fontSize: 14,
+    color: '#ccc',
     marginBottom: 10,
-    fontWeight: '600',
+    textAlign: 'center',
+    paddingHorizontal: 10,
   },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  internetRoomsContainer: {
+    marginTop: 15,
   },
-  input: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderWidth: 2,
-    borderColor: '#4a90e2',
-    borderRadius: 15,
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    fontSize: 16,
-    color: '#fff',
-    flex: 1,
-  },
-  roomsSection: {
-    marginTop: 20,
-  },
-  roomsSectionTitle: {
+  internetRoomsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 15,
+    marginBottom: 10,
   },
   roomsList: {
-    maxHeight: 200,
+    maxHeight: 150,
   },
   roomItemContainer: {
     flexDirection: 'row',
@@ -702,15 +656,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.1)',
     marginRight: 10,
   },
-  myRoomItem: {
+  ownRoomItem: {
     backgroundColor: 'rgba(0, 123, 255, 0.15)',
     borderWidth: 2,
     borderColor: '#007bff',
-  },
-  joinedRoomItem: {
-    backgroundColor: 'rgba(111, 66, 193, 0.15)',
-    borderWidth: 2,
-    borderColor: '#6f42c1',
   },
   deleteRoomButton: {
     backgroundColor: 'rgba(220, 53, 69, 0.1)',
@@ -721,7 +670,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  myRoomDeleteButton: {
+  ownRoomDeleteButton: {
     backgroundColor: 'rgba(220, 53, 69, 0.2)',
     borderWidth: 2,
     borderColor: '#dc3545',
@@ -747,13 +696,13 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 4,
   },
-  refreshingContainer: {
+  discoveringContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 20,
   },
-  refreshingText: {
+  discoveringText: {
     color: '#4a90e2',
     fontSize: 16,
     marginLeft: 10,
@@ -780,12 +729,5 @@ const styles = StyleSheet.create({
     color: '#28a745',
     marginLeft: 8,
     fontWeight: '500',
-  },
-  roomManagementInfo: {
-    fontSize: 14,
-    color: '#ccc',
-    marginBottom: 10,
-    textAlign: 'center',
-    paddingHorizontal: 10,
   },
 }); 
