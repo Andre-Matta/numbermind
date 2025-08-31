@@ -7,46 +7,50 @@ let firebaseApp;
 try {
   // Check if Firebase is already initialized
   if (admin.apps.length === 0) {
-    // Initialize with service account key
-    const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || 
-      path.join(__dirname, '../firebase-service-account.json');
-    
-    // Try to load service account from file
     let serviceAccount;
-    try {
-      serviceAccount = require(serviceAccountPath);
-      console.log('✅ Loaded Firebase service account from file');
-    } catch (error) {
-      console.log('📁 Service account file not found, trying environment variables...');
-      // If file doesn't exist, try to use environment variables
-      if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY) {
-        // Properly format the private key
-        let privateKey = process.env.FIREBASE_PRIVATE_KEY;
-        
-        // Handle different private key formats
-        if (privateKey.includes('\\n')) {
-          // Replace escaped newlines with actual newlines
-          privateKey = privateKey.replace(/\\n/g, '\n');
-        } else if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
-          // If it's a raw key without headers, add them
-          privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----`;
-        }
-        
-        serviceAccount = {
-          type: "service_account",
-          project_id: process.env.FIREBASE_PROJECT_ID,
-          private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-          private_key: privateKey,
-          client_email: process.env.FIREBASE_CLIENT_EMAIL,
-          client_id: process.env.FIREBASE_CLIENT_ID,
-          auth_uri: "https://accounts.google.com/o/oauth2/auth",
-          token_uri: "https://oauth2.googleapis.com/token",
-          auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-          client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL
-        };
-        console.log('✅ Loaded Firebase service account from environment variables');
-      } else {
-        throw new Error('Firebase service account not found. Please provide FIREBASE_SERVICE_ACCOUNT_PATH or Firebase environment variables (FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, etc.).');
+    
+    // First, try to use environment variables (preferred method)
+    if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY) {
+      console.log('🔧 Using Firebase service account from environment variables');
+      
+      // Properly format the private key
+      let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+      
+      // Handle different private key formats
+      if (privateKey.includes('\\n')) {
+        // Replace escaped newlines with actual newlines
+        privateKey = privateKey.replace(/\\n/g, '\n');
+      } else if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+        // If it's a raw key without headers, add them
+        privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----`;
+      }
+      
+      serviceAccount = {
+        type: "service_account",
+        project_id: process.env.FIREBASE_PROJECT_ID,
+        private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+        private_key: privateKey,
+        client_email: process.env.FIREBASE_CLIENT_EMAIL,
+        client_id: process.env.FIREBASE_CLIENT_ID,
+        auth_uri: "https://accounts.google.com/o/oauth2/auth",
+        token_uri: "https://oauth2.googleapis.com/token",
+        auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+        client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL
+      };
+      console.log('✅ Loaded Firebase service account from environment variables');
+    } else {
+      // Fallback to service account file
+      const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || 
+        path.join(__dirname, '../firebase-service-account.json');
+      
+      console.log('📁 Environment variables not found, trying service account file...');
+      console.log(`Path: ${serviceAccountPath}`);
+      
+      try {
+        serviceAccount = require(serviceAccountPath);
+        console.log('✅ Loaded Firebase service account from file');
+      } catch (error) {
+        throw new Error('Firebase service account not found. Please provide Firebase environment variables (FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, etc.) or a valid service account JSON file.');
       }
     }
 

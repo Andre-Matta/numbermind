@@ -3,11 +3,57 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 console.log('🔍 Firebase Configuration Debug Script\n');
 
-// Check service account file first (preferred method)
+// Check environment variables first (preferred method)
+console.log('📋 Environment Variables Check (Preferred Method):');
+console.log(`FIREBASE_PROJECT_ID: ${process.env.FIREBASE_PROJECT_ID ? '✅ Set' : '❌ Missing'}`);
+console.log(`FIREBASE_PRIVATE_KEY_ID: ${process.env.FIREBASE_PRIVATE_KEY_ID ? '✅ Set' : '❌ Missing'}`);
+console.log(`FIREBASE_CLIENT_EMAIL: ${process.env.FIREBASE_CLIENT_EMAIL ? '✅ Set' : '❌ Missing'}`);
+console.log(`FIREBASE_CLIENT_ID: ${process.env.FIREBASE_CLIENT_ID ? '✅ Set' : '❌ Missing'}`);
+console.log(`FIREBASE_CLIENT_CERT_URL: ${process.env.FIREBASE_CLIENT_CERT_URL ? '✅ Set' : '❌ Missing'}`);
+
+// Check private key
+if (process.env.FIREBASE_PRIVATE_KEY) {
+  console.log(`FIREBASE_PRIVATE_KEY: ✅ Set (${process.env.FIREBASE_PRIVATE_KEY.length} characters)`);
+  
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+  
+  // Check private key format
+  if (privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+    console.log('   Format: ✅ Includes proper headers');
+  } else {
+    console.log('   Format: ⚠️  Missing headers (will be added automatically)');
+  }
+  
+  if (privateKey.includes('\\n')) {
+    console.log('   Newlines: ✅ Contains escaped newlines');
+  } else if (privateKey.includes('\n')) {
+    console.log('   Newlines: ✅ Contains actual newlines');
+  } else {
+    console.log('   Newlines: ⚠️  No newlines detected');
+  }
+  
+  // Show first and last few characters
+  console.log(`   Preview: ${privateKey.substring(0, 50)}...${privateKey.substring(privateKey.length - 30)}`);
+} else {
+  console.log('FIREBASE_PRIVATE_KEY: ❌ Missing');
+}
+
+// Check if environment variables are sufficient
+const hasRequiredEnvVars = process.env.FIREBASE_PROJECT_ID && 
+                          process.env.FIREBASE_PRIVATE_KEY && 
+                          process.env.FIREBASE_CLIENT_EMAIL;
+
+if (hasRequiredEnvVars) {
+  console.log('\n✅ Environment variables are sufficient for Firebase configuration');
+} else {
+  console.log('\n⚠️ Environment variables are incomplete, will fall back to service account file');
+}
+
+// Check service account file (fallback method)
 const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || 
   path.join(__dirname, '../firebase-service-account.json');
 
-console.log('📁 Service Account File Check (Preferred Method):');
+console.log('\n📁 Service Account File Check (Fallback Method):');
 console.log(`Path: ${serviceAccountPath}`);
 
 let serviceAccountFileExists = false;
@@ -39,72 +85,22 @@ try {
   console.log(`   Error: ${error.message}`);
 }
 
-// Only check environment variables if JSON file doesn't exist
-if (!serviceAccountFileExists) {
-  console.log('\n📋 Environment Variables Check (Fallback Method):');
-  console.log(`FIREBASE_PROJECT_ID: ${process.env.FIREBASE_PROJECT_ID ? '✅ Set' : '❌ Missing'}`);
-  console.log(`FIREBASE_PRIVATE_KEY_ID: ${process.env.FIREBASE_PRIVATE_KEY_ID ? '✅ Set' : '❌ Missing'}`);
-  console.log(`FIREBASE_CLIENT_EMAIL: ${process.env.FIREBASE_CLIENT_EMAIL ? '✅ Set' : '❌ Missing'}`);
-  console.log(`FIREBASE_CLIENT_ID: ${process.env.FIREBASE_CLIENT_ID ? '✅ Set' : '❌ Missing'}`);
-  console.log(`FIREBASE_CLIENT_CERT_URL: ${process.env.FIREBASE_CLIENT_CERT_URL ? '✅ Set' : '❌ Missing'}`);
-
-  // Check private key
-  if (process.env.FIREBASE_PRIVATE_KEY) {
-    console.log(`FIREBASE_PRIVATE_KEY: ✅ Set (${process.env.FIREBASE_PRIVATE_KEY.length} characters)`);
-    
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY;
-    
-    // Check private key format
-    if (privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
-      console.log('   Format: ✅ Includes proper headers');
-    } else {
-      console.log('   Format: ⚠️  Missing headers (will be added automatically)');
-    }
-    
-    if (privateKey.includes('\\n')) {
-      console.log('   Newlines: ✅ Contains escaped newlines');
-    } else if (privateKey.includes('\n')) {
-      console.log('   Newlines: ✅ Contains actual newlines');
-    } else {
-      console.log('   Newlines: ⚠️  No newlines detected');
-    }
-    
-    // Show first and last few characters
-    console.log(`   Preview: ${privateKey.substring(0, 50)}...${privateKey.substring(privateKey.length - 30)}`);
+// Summary
+console.log('\n📊 Configuration Summary:');
+if (hasRequiredEnvVars) {
+  console.log('✅ Primary: Environment variables (will be used)');
+  if (serviceAccountFileExists) {
+    console.log('📁 Fallback: Service account file (available but not needed)');
   } else {
-    console.log('FIREBASE_PRIVATE_KEY: ❌ Missing');
+    console.log('📁 Fallback: Service account file (not available)');
   }
+} else if (serviceAccountFileExists) {
+  console.log('❌ Primary: Environment variables (incomplete)');
+  console.log('✅ Fallback: Service account file (will be used)');
 } else {
-  console.log('\n📋 Environment Variables: ⏭️  Skipped (using JSON file)');
-}
-
-// Check service account file
-console.log(`\n📁 Service Account File Check:`);
-console.log(`Path: ${serviceAccountPath}`);
-
-try {
-  const fs = require('fs');
-  if (fs.existsSync(serviceAccountPath)) {
-    console.log('   Status: ✅ File exists');
-    const stats = fs.statSync(serviceAccountPath);
-    console.log(`   Size: ${stats.size} bytes`);
-    
-    // Try to parse the JSON
-    try {
-      const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
-      console.log('   JSON: ✅ Valid JSON');
-      console.log(`   Project ID: ${serviceAccount.project_id || '❌ Missing'}`);
-      console.log(`   Client Email: ${serviceAccount.client_email || '❌ Missing'}`);
-      console.log(`   Private Key: ${serviceAccount.private_key ? '✅ Present' : '❌ Missing'}`);
-    } catch (parseError) {
-      console.log('   JSON: ❌ Invalid JSON format');
-      console.log(`   Error: ${parseError.message}`);
-    }
-  } else {
-    console.log('   Status: ❌ File does not exist');
-  }
-} catch (error) {
-  console.log(`   Error: ${error.message}`);
+  console.log('❌ Primary: Environment variables (incomplete)');
+  console.log('❌ Fallback: Service account file (not available)');
+  console.log('\n🚨 No valid Firebase configuration found!');
 }
 
 // Test Firebase initialization
@@ -176,12 +172,21 @@ try {
 }
 
 console.log('\n📝 Next Steps:');
-if (serviceAccountFileExists) {
-  console.log('✅ Service account JSON file found!');
+if (hasRequiredEnvVars) {
+  console.log('✅ Environment variables are sufficient for Firebase configuration');
+  if (serviceAccountFileExists) {
+    console.log('1. Run "npm run test-firebase" to test the actual Firebase connection');
+    console.log('2. Run "npm run dev" to start your server');
+  } else {
+    console.log('1. Run "npm run test-firebase" to test the actual Firebase connection');
+    console.log('2. Run "npm run dev" to start your server');
+  }
+} else if (serviceAccountFileExists) {
+  console.log('❌ Environment variables are incomplete, will fall back to service account file');
   console.log('1. Run "npm run test-firebase" to test the actual Firebase connection');
   console.log('2. Run "npm run dev" to start your server');
 } else {
-  console.log('❌ Service account JSON file not found');
+  console.log('❌ Environment variables are incomplete and service account file not found');
   console.log('1. Download your Firebase service account key from Firebase Console');
   console.log('2. Place it as "firebase-service-account.json" in the server directory');
   console.log('3. Run "npm run debug-firebase" again to verify');

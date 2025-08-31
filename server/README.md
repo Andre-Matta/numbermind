@@ -134,15 +134,41 @@ scripts\setup-and-test.ps1
 ### **Troubleshooting**
 See `scripts/TROUBLESHOOTING.md` for detailed troubleshooting guide.
 
-### **Optional Variables**
+### **Firebase Configuration (Recommended)**
+
+Firebase is used for push notifications. The system prioritizes environment variables over the service account JSON file.
+
+#### **Method 1: Environment Variables (Recommended)**
+```env
+# Firebase Configuration
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_PRIVATE_KEY_ID=your-private-key-id
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSj...\n-----END PRIVATE KEY-----"
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com
+FIREBASE_CLIENT_ID=your-client-id
+FIREBASE_CLIENT_CERT_URL=https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-xxxxx%40your-project.iam.gserviceaccount.com
+```
+
+#### **Method 2: Service Account File (Fallback)**
+Place your `firebase-service-account.json` file in the server directory.
+
+#### **Verification Scripts**
+```bash
+# Verify environment variables
+npm run verify-env
+
+# Debug Firebase configuration
+npm run debug-firebase
+
+# Test Firebase functionality
+npm run test-firebase
+```
+
+### **Other Optional Variables**
 ```env
 # Stripe (for payments)
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_PUBLISHABLE_KEY=pk_test_...
-
-# Firebase (for notifications)
-FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----..."
 
 # Cloudinary (for file uploads)
 CLOUDINARY_CLOUD_NAME=your-cloud-name
