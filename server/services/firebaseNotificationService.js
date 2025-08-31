@@ -6,6 +6,15 @@ class FirebaseNotificationService {
     this.messaging = messaging;
   }
 
+  // Convert all data values to strings (Firebase requirement)
+  convertDataToStrings(data) {
+    const stringData = {};
+    for (const [key, value] of Object.entries(data)) {
+      stringData[key] = String(value);
+    }
+    return stringData;
+  }
+
   // Send notification to a single user
   async sendToUser(userId, title, body, data = {}) {
     try {
@@ -33,7 +42,7 @@ class FirebaseNotificationService {
           body
         },
         data: {
-          ...data,
+          ...this.convertDataToStrings(data),
           click_action: 'FLUTTER_NOTIFICATION_CLICK', // For Flutter apps
           timestamp: Date.now().toString()
         },
@@ -130,7 +139,7 @@ class FirebaseNotificationService {
           body
         },
         data: {
-          ...data,
+          ...this.convertDataToStrings(data),
           timestamp: Date.now().toString()
         },
         topic,

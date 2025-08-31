@@ -17,8 +17,14 @@ router.post('/register', [
   body('platform').isIn(['ios', 'android', 'web']).withMessage('Invalid platform')
 ], async (req, res) => {
   try {
+    console.log('🔍 FCM Registration Debug:');
+    console.log('📥 Request body:', req.body);
+    console.log('👤 User ID:', req.user?.id);
+    console.log('🔑 Auth header:', req.header('Authorization')?.substring(0, 20) + '...');
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('❌ Validation errors:', errors.array());
       return res.status(400).json({
         success: false,
         message: 'Validation error',
@@ -29,15 +35,19 @@ router.post('/register', [
     const { fcmToken, platform, deviceId } = req.body;
     const userId = req.user.id;
 
+    console.log('✅ Validation passed, registering token...');
+
     // Register token with Firebase service
     await firebaseNotificationService.registerToken(userId, fcmToken, platform, deviceId);
+
+    console.log('✅ Token registered successfully');
 
     res.json({
       success: true,
       message: 'FCM token registered successfully'
     });
   } catch (error) {
-    console.error('Register FCM token error:', error);
+    console.error('❌ Register FCM token error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error while registering FCM token'

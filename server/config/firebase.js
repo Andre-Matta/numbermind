@@ -9,7 +9,7 @@ try {
   if (admin.apps.length === 0) {
     // Initialize with service account key
     const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || 
-      path.join(__dirname, '../../firebase-service-account.json');
+      path.join(__dirname, '../firebase-service-account.json');
     
     // Try to load service account from file
     let serviceAccount;
