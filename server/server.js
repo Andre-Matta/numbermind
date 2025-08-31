@@ -9,6 +9,9 @@ const morgan = require('morgan');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
+// Initialize Firebase Admin SDK
+require('./config/firebase');
+
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const gameRoutes = require('./routes/games');

@@ -1,8 +1,8 @@
 const express = require('express');
 const { verifyToken } = require('../utils/jwtUtils');
 const { body, validationResult } = require('express-validator');
-const Notification = require('../models/Notification');
 const User = require('../models/User');
+const firebaseNotificationService = require('../services/firebaseNotificationService');
 
 const router = express.Router();
 
@@ -10,10 +10,10 @@ const router = express.Router();
 router.use(verifyToken);
 
 // @route   POST /api/notifications/register
-// @desc    Register push notification token
+// @desc    Register FCM token
 // @access  Private
 router.post('/register', [
-  body('pushToken').notEmpty().withMessage('Push token is required'),
+  body('fcmToken').notEmpty().withMessage('FCM token is required'),
   body('platform').isIn(['ios', 'android', 'web']).withMessage('Invalid platform')
 ], async (req, res) => {
   try {
@@ -26,41 +26,21 @@ router.post('/register', [
       });
     }
 
-    const { pushToken, platform, deviceId } = req.body;
+    const { fcmToken, platform, deviceId } = req.body;
     const userId = req.user.id;
 
-    // Find user and update push tokens
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    // Remove existing token if it exists
-    user.pushTokens = user.pushTokens.filter(token => token.token !== pushToken);
-    
-    // Add new token
-    user.pushTokens.push({
-      token: pushToken,
-      platform,
-      deviceId,
-      isActive: true,
-      lastUsed: new Date()
-    });
-
-    await user.save();
+    // Register token with Firebase service
+    await firebaseNotificationService.registerToken(userId, fcmToken, platform, deviceId);
 
     res.json({
       success: true,
-      message: 'Push token registered successfully'
+      message: 'FCM token registered successfully'
     });
   } catch (error) {
-    console.error('Register push token error:', error);
+    console.error('Register FCM token error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error while registering push token'
+      message: 'Server error while registering FCM token'
     });
   }
 });
@@ -94,53 +74,18 @@ router.post('/send', [
       });
     }
 
-    const { userId, title, body, type, data, scheduledFor } = req.body;
+    const { userId, title, body, type, data } = req.body;
 
-    // Create notification in database
-    const notification = await Notification.create({
-      userId,
-      title,
-      body,
+    // Send notification via Firebase
+    const result = await firebaseNotificationService.sendToUser(userId, title, body, {
       type,
-      data: data || {},
-      scheduledFor: scheduledFor ? new Date(scheduledFor) : null
+      ...data
     });
 
-    // Send push notification if user has active tokens
-    const user = await User.findById(userId).select('pushTokens settings');
-    if (user && user.pushTokens.length > 0) {
-      // Check user notification preferences
-      const notificationSettings = user.settings?.notifications || {};
-      const shouldSend = notificationSettings[type] !== false; // Default to true if not set
-
-      if (shouldSend) {
-        // Send to all active tokens
-        for (const tokenInfo of user.pushTokens) {
-          if (tokenInfo.isActive) {
-            try {
-              await sendPushNotification(tokenInfo.token, title, body, {
-                type,
-                ...data
-              });
-              
-              // Mark notification as sent
-              notification.status = 'sent';
-              notification.sentAt = new Date();
-            } catch (error) {
-              console.error(`Failed to send push notification to token ${tokenInfo.token}:`, error);
-              notification.status = 'failed';
-              notification.errorMessage = error.message;
-            }
-          }
-        }
-        await notification.save();
-      }
-    }
-
     res.json({
-      success: true,
-      message: 'Notification sent successfully',
-      notificationId: notification._id
+      success: result.success,
+      message: result.message,
+      results: result.results
     });
   } catch (error) {
     console.error('Send notification error:', error);
@@ -151,56 +96,24 @@ router.post('/send', [
   }
 });
 
-// @route   GET /api/notifications
-// @desc    Get user's notifications
+// @route   POST /api/notifications/send-multiple
+// @desc    Send push notification to multiple users
 // @access  Private
-router.get('/', async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { page = 1, limit = 20, type, unreadOnly = false } = req.query;
-
-    const query = { userId };
-    
-    if (type) {
-      query.type = type;
-    }
-    
-    if (unreadOnly === 'true') {
-      query.isRead = false;
-    }
-
-    const notifications = await Notification.find(query)
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .lean();
-
-    const total = await Notification.countDocuments(query);
-
-    res.json({
-      success: true,
-      notifications,
-      pagination: {
-        currentPage: page,
-        totalPages: Math.ceil(total / limit),
-        totalNotifications: total,
-        hasMore: page * limit < total
-      }
-    });
-  } catch (error) {
-    console.error('Get notifications error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while fetching notifications'
-    });
-  }
-});
-
-// @route   PUT /api/notifications/read
-// @desc    Mark notifications as read
-// @access  Private
-router.put('/read', [
-  body('notificationIds').isArray().withMessage('Notification IDs array is required')
+router.post('/send-multiple', [
+  body('userIds').isArray().withMessage('User IDs array is required'),
+  body('title').notEmpty().withMessage('Title is required'),
+  body('body').notEmpty().withMessage('Body is required'),
+  body('type').isIn([
+    'game_invite',
+    'match_found',
+    'friend_request',
+    'your_turn',
+    'game_result',
+    'achievement',
+    'connection_status',
+    'system',
+    'promotion'
+  ]).withMessage('Invalid notification type')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -212,149 +125,443 @@ router.put('/read', [
       });
     }
 
-    const { notificationIds } = req.body;
-    const userId = req.user.id;
+    const { userIds, title, body, type, data } = req.body;
 
-    // Mark notifications as read
-    const result = await Notification.updateMany(
-      {
-        _id: { $in: notificationIds },
-        userId
-      },
-      {
-        isRead: true
-      }
-    );
+    // Send notifications to multiple users via Firebase
+    const results = await firebaseNotificationService.sendToUsers(userIds, title, body, {
+      type,
+      ...data
+    });
 
     res.json({
       success: true,
-      message: `${result.modifiedCount} notifications marked as read`
+      message: `Notifications sent to ${userIds.length} users`,
+      results
     });
   } catch (error) {
-    console.error('Mark as read error:', error);
+    console.error('Send multiple notifications error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error while marking notifications as read'
+      message: 'Server error while sending notifications'
     });
   }
 });
 
-// @route   PUT /api/notifications/read-all
-// @desc    Mark all user notifications as read
+// @route   POST /api/notifications/send-topic
+// @desc    Send push notification to topic
 // @access  Private
-router.put('/read-all', async (req, res) => {
+router.post('/send-topic', [
+  body('topic').notEmpty().withMessage('Topic is required'),
+  body('title').notEmpty().withMessage('Title is required'),
+  body('body').notEmpty().withMessage('Body is required')
+], async (req, res) => {
   try {
-    const userId = req.user.id;
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: errors.array()
+      });
+    }
 
-    const result = await Notification.updateMany(
-      { userId, isRead: false },
-      { isRead: true }
-    );
+    const { topic, title, body, data } = req.body;
+
+    // Send topic notification via Firebase
+    const result = await firebaseNotificationService.sendToTopic(topic, title, body, data);
 
     res.json({
-      success: true,
-      message: `${result.modifiedCount} notifications marked as read`
+      success: result.success,
+      messageId: result.messageId
     });
   } catch (error) {
-    console.error('Mark all as read error:', error);
+    console.error('Send topic notification error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error while marking notifications as read'
+      message: 'Server error while sending topic notification'
     });
   }
 });
 
-// @route   DELETE /api/notifications/:id
-// @desc    Delete a notification
+// @route   POST /api/notifications/subscribe-topic
+// @desc    Subscribe user to topic
 // @access  Private
-router.delete('/:id', async (req, res) => {
+router.post('/subscribe-topic', [
+  body('topic').notEmpty().withMessage('Topic is required')
+], async (req, res) => {
   try {
-    const { id } = req.params;
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: errors.array()
+      });
+    }
+
+    const { topic } = req.body;
     const userId = req.user.id;
 
-    const notification = await Notification.findOneAndDelete({
-      _id: id,
-      userId
-    });
+    // Get user's FCM tokens
+    const user = await User.findById(userId).select('fcmTokens');
+    if (!user || !user.fcmTokens || user.fcmTokens.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No FCM tokens found for user'
+      });
+    }
 
-    if (!notification) {
+    const tokens = user.fcmTokens.filter(t => t.isActive).map(t => t.token);
+    
+    if (tokens.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No active FCM tokens found'
+      });
+    }
+
+    // Subscribe to topic
+    const result = await firebaseNotificationService.subscribeToTopic(tokens, topic);
+
+    res.json({
+      success: true,
+      message: `Subscribed ${result.successCount}/${tokens.length} tokens to topic ${topic}`,
+      result
+    });
+  } catch (error) {
+    console.error('Subscribe to topic error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while subscribing to topic'
+    });
+  }
+});
+
+// @route   POST /api/notifications/unsubscribe-topic
+// @desc    Unsubscribe user from topic
+// @access  Private
+router.post('/unsubscribe-topic', [
+  body('topic').notEmpty().withMessage('Topic is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: errors.array()
+      });
+    }
+
+    const { topic } = req.body;
+    const userId = req.user.id;
+
+    // Get user's FCM tokens
+    const user = await User.findById(userId).select('fcmTokens');
+    if (!user || !user.fcmTokens || user.fcmTokens.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No FCM tokens found for user'
+      });
+    }
+
+    const tokens = user.fcmTokens.filter(t => t.isActive).map(t => t.token);
+    
+    if (tokens.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No active FCM tokens found'
+      });
+    }
+
+    // Unsubscribe from topic
+    const result = await firebaseNotificationService.unsubscribeFromTopic(tokens, topic);
+
+    res.json({
+      success: true,
+      message: `Unsubscribed ${result.successCount}/${tokens.length} tokens from topic ${topic}`,
+      result
+    });
+  } catch (error) {
+    console.error('Unsubscribe from topic error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while unsubscribing from topic'
+    });
+  }
+});
+
+// @route   DELETE /api/notifications/token
+// @desc    Remove FCM token
+// @access  Private
+router.delete('/token', [
+  body('token').notEmpty().withMessage('FCM token is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: errors.array()
+      });
+    }
+
+    const { token } = req.body;
+    const userId = req.user.id;
+
+    // Remove token
+    await firebaseNotificationService.removeToken(userId, token);
+
+    res.json({
+      success: true,
+      message: 'FCM token removed successfully'
+    });
+  } catch (error) {
+    console.error('Remove FCM token error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while removing FCM token'
+    });
+  }
+});
+
+// @route   GET /api/notifications/tokens
+// @desc    Get user's FCM tokens
+// @access  Private
+router.get('/tokens', async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const user = await User.findById(userId).select('fcmTokens');
+    if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'Notification not found'
+        message: 'User not found'
       });
     }
 
     res.json({
       success: true,
-      message: 'Notification deleted successfully'
+      tokens: user.fcmTokens || []
     });
   } catch (error) {
-    console.error('Delete notification error:', error);
+    console.error('Get FCM tokens error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error while deleting notification'
+      message: 'Server error while getting FCM tokens'
     });
   }
 });
 
-// @route   GET /api/notifications/unread-count
-// @desc    Get count of unread notifications
+// Game-specific notification endpoints
+// @route   POST /api/notifications/game-invite
+// @desc    Send game invite notification
 // @access  Private
-router.get('/unread-count', async (req, res) => {
+router.post('/game-invite', [
+  body('userId').isMongoId().withMessage('Valid user ID is required'),
+  body('inviterName').notEmpty().withMessage('Inviter name is required'),
+  body('roomId').notEmpty().withMessage('Room ID is required')
+], async (req, res) => {
   try {
-    const userId = req.user.id;
-
-    const count = await Notification.countDocuments({
-      userId,
-      isRead: false
-    });
-
-    res.json({
-      success: true,
-      unreadCount: count
-    });
-  } catch (error) {
-    console.error('Get unread count error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while getting unread count'
-    });
-  }
-});
-
-// Helper function to send push notification via Expo
-async function sendPushNotification(expoPushToken, title, body, data = {}) {
-  const message = {
-    to: expoPushToken,
-    sound: 'default',
-    title,
-    body,
-    data,
-    priority: 'high'
-  };
-
-  try {
-    const response = await fetch('https://exp.host/--/api/v2/push/send', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Accept-encoding': 'gzip, deflate',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(message),
-    });
-
-    const result = await response.json();
-    
-    if (result.errors && result.errors.length > 0) {
-      throw new Error(result.errors[0].message);
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: errors.array()
+      });
     }
 
-    return result;
+    const { userId, inviterName, roomId } = req.body;
+
+    const result = await firebaseNotificationService.sendGameInvite(userId, inviterName, roomId);
+
+    res.json({
+      success: result.success,
+      message: result.message
+    });
   } catch (error) {
-    console.error('Push notification error:', error);
-    throw error;
+    console.error('Send game invite error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while sending game invite'
+    });
   }
-}
+});
+
+// @route   POST /api/notifications/match-found
+// @desc    Send match found notification
+// @access  Private
+router.post('/match-found', [
+  body('userId').isMongoId().withMessage('Valid user ID is required'),
+  body('opponentName').notEmpty().withMessage('Opponent name is required'),
+  body('gameId').notEmpty().withMessage('Game ID is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: errors.array()
+      });
+    }
+
+    const { userId, opponentName, gameId } = req.body;
+
+    const result = await firebaseNotificationService.sendMatchFound(userId, opponentName, gameId);
+
+    res.json({
+      success: result.success,
+      message: result.message
+    });
+  } catch (error) {
+    console.error('Send match found error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while sending match found notification'
+    });
+  }
+});
+
+// @route   POST /api/notifications/friend-request
+// @desc    Send friend request notification
+// @access  Private
+router.post('/friend-request', [
+  body('userId').isMongoId().withMessage('Valid user ID is required'),
+  body('requesterName').notEmpty().withMessage('Requester name is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: errors.array()
+      });
+    }
+
+    const { userId, requesterName } = req.body;
+
+    const result = await firebaseNotificationService.sendFriendRequest(userId, requesterName);
+
+    res.json({
+      success: result.success,
+      message: result.message
+    });
+  } catch (error) {
+    console.error('Send friend request error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while sending friend request notification'
+    });
+  }
+});
+
+// @route   POST /api/notifications/your-turn
+// @desc    Send your turn notification
+// @access  Private
+router.post('/your-turn', [
+  body('userId').isMongoId().withMessage('Valid user ID is required'),
+  body('gameId').notEmpty().withMessage('Game ID is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: errors.array()
+      });
+    }
+
+    const { userId, gameId } = req.body;
+
+    const result = await firebaseNotificationService.sendYourTurn(userId, gameId);
+
+    res.json({
+      success: result.success,
+      message: result.message
+    });
+  } catch (error) {
+    console.error('Send your turn error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while sending your turn notification'
+    });
+  }
+});
+
+// @route   POST /api/notifications/game-result
+// @desc    Send game result notification
+// @access  Private
+router.post('/game-result', [
+  body('userId').isMongoId().withMessage('Valid user ID is required'),
+  body('won').isBoolean().withMessage('Won status is required'),
+  body('opponentName').notEmpty().withMessage('Opponent name is required'),
+  body('score').isNumeric().withMessage('Score is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: errors.array()
+      });
+    }
+
+    const { userId, won, opponentName, score } = req.body;
+
+    const result = await firebaseNotificationService.sendGameResult(userId, won, opponentName, score);
+
+    res.json({
+      success: result.success,
+      message: result.message
+    });
+  } catch (error) {
+    console.error('Send game result error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while sending game result notification'
+    });
+  }
+});
+
+// @route   POST /api/notifications/achievement
+// @desc    Send achievement notification
+// @access  Private
+router.post('/achievement', [
+  body('userId').isMongoId().withMessage('Valid user ID is required'),
+  body('achievementName').notEmpty().withMessage('Achievement name is required'),
+  body('description').notEmpty().withMessage('Description is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: errors.array()
+      });
+    }
+
+    const { userId, achievementName, description } = req.body;
+
+    const result = await firebaseNotificationService.sendAchievement(userId, achievementName, description);
+
+    res.json({
+      success: result.success,
+      message: result.message
+    });
+  } catch (error) {
+    console.error('Send achievement error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while sending achievement notification'
+    });
+  }
+});
 
 module.exports = router;

@@ -1,281 +1,363 @@
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import config from '../config/config';
+import firebaseConfig from '../config/firebase';
 
-// Configure notification behavior
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
-
-class NotificationService {
+class FirebaseNotificationService {
   constructor() {
-    this.expoPushToken = null;
-    this.notificationListener = null;
-    this.responseListener = null;
+    this.fcmToken = null;
     this.isInitialized = false;
+    this.tokenRefreshInterval = null;
+    this.notificationListeners = [];
   }
 
-  // Initialize notification service
+  // Initialize Firebase notification service
   async initialize() {
-    if (this.isInitialized) return;
+    if (this.isInitialized) return true;
 
     try {
-      // Request permissions
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-      
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
+      console.log('🔥 Initializing Firebase notification service...');
+
+      // Check if Firebase is available
+      if (!global.firebase) {
+        console.log('⚠️ Firebase not available, using fallback notification system');
+        return this.initializeFallback();
       }
-      
-      if (finalStatus !== 'granted') {
-        console.log('Notification permissions not granted');
+
+      // Initialize Firebase if not already initialized
+      if (!global.firebase.apps.length) {
+        global.firebase.initializeApp(firebaseConfig.firebaseConfig);
+        console.log('✅ Firebase initialized');
+      }
+
+      // Request notification permissions
+      const hasPermission = await this.requestPermissions();
+      if (!hasPermission) {
+        console.log('❌ Notification permissions not granted');
         return false;
       }
 
-      // Get push token (only for physical devices and development builds)
-      if (Device.isDevice) {
-        try {
-          // Check if we're in Expo Go (which doesn't support push notifications in SDK 53+)
-          const isExpoGo = __DEV__ && !global.ExpoModulesCore;
-          
-          if (isExpoGo) {
-            console.log('Running in Expo Go - push notifications are not supported in SDK 53+. Use a development build for full functionality.');
-            // Skip push token registration in Expo Go
-          } else {
-            this.expoPushToken = (await Notifications.getExpoPushTokenAsync({
-              projectId: config.EXPO_PROJECT_ID || 'f7981a89-39a0-43c3-8c63-9346e0fa35ce',
-            })).data;
-            
-            // Save token to storage
-            await AsyncStorage.setItem('expoPushToken', this.expoPushToken);
-            console.log('Push token:', this.expoPushToken);
-          }
-        } catch (tokenError) {
-          console.log('Could not get push token:', tokenError.message);
-          // This might happen in Expo Go or if there are configuration issues
-        }
-      }
+      // Get FCM token
+      await this.getFcmToken();
 
       // Set up notification listeners
       this.setupNotificationListeners();
-      
+
+      // Set up token refresh
+      this.setupTokenRefresh();
+
       this.isInitialized = true;
-      console.log('Notification service initialized successfully');
+      console.log('✅ Firebase notification service initialized successfully');
       return true;
     } catch (error) {
-      console.error('Failed to initialize notifications:', error);
+      console.error('❌ Failed to initialize Firebase notifications:', error);
+      return this.initializeFallback();
+    }
+  }
+
+  // Fallback initialization for when Firebase is not available
+  async initializeFallback() {
+    try {
+      console.log('🔄 Initializing fallback notification system...');
+      
+      // Request basic permissions
+      const hasPermission = await this.requestBasicPermissions();
+      if (!hasPermission) {
+        console.log('❌ Basic notification permissions not granted');
+        return false;
+      }
+
+      this.isInitialized = true;
+      console.log('✅ Fallback notification system initialized');
+      return true;
+    } catch (error) {
+      console.error('❌ Failed to initialize fallback notifications:', error);
       return false;
+    }
+  }
+
+  // Request notification permissions
+  async requestPermissions() {
+    try {
+      if (Platform.OS === 'ios') {
+        const { status } = await global.firebase.messaging().requestPermission();
+        return status === 'authorized';
+      } else {
+        // Android permissions are handled by the app manifest
+        return true;
+      }
+    } catch (error) {
+      console.error('Error requesting permissions:', error);
+      return false;
+    }
+  }
+
+  // Request basic permissions (fallback)
+  async requestBasicPermissions() {
+    try {
+      // For now, just return true as basic permissions
+      // In a real implementation, you might use a different notification library
+      return true;
+    } catch (error) {
+      console.error('Error requesting basic permissions:', error);
+      return false;
+    }
+  }
+
+  // Get FCM token
+  async getFcmToken() {
+    try {
+      if (!global.firebase) {
+        console.log('⚠️ Firebase not available, cannot get FCM token');
+        return null;
+      }
+
+      const token = await global.firebase.messaging().getToken();
+      this.fcmToken = token;
+      
+      // Save token to storage
+      await AsyncStorage.setItem('fcmToken', token);
+      console.log('✅ FCM token obtained:', token);
+      
+      return token;
+    } catch (error) {
+      console.error('❌ Failed to get FCM token:', error);
+      return null;
     }
   }
 
   // Set up notification listeners
   setupNotificationListeners() {
-    // Listen for incoming notifications
-    this.notificationListener = Notifications.addNotificationReceivedListener(notification => {
-      console.log('Notification received:', notification);
-      this.handleNotificationReceived(notification);
-    });
+    if (!global.firebase) {
+      console.log('⚠️ Firebase not available, cannot set up listeners');
+      return;
+    }
 
-    // Listen for notification responses (when user taps notification)
-    this.responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('Notification response:', response);
-      this.handleNotificationResponse(response);
-    });
+    try {
+      // Listen for token refresh
+      const tokenRefreshListener = global.firebase.messaging().onTokenRefresh(() => {
+        this.handleTokenRefresh();
+      });
+
+      // Listen for foreground messages
+      const foregroundListener = global.firebase.messaging().onMessage((message) => {
+        this.handleForegroundMessage(message);
+      });
+
+      // Listen for background/quit state messages
+      global.firebase.messaging().setBackgroundMessageHandler((message) => {
+        this.handleBackgroundMessage(message);
+      });
+
+      this.notificationListeners.push(tokenRefreshListener, foregroundListener);
+      console.log('✅ Notification listeners set up');
+    } catch (error) {
+      console.error('❌ Failed to set up notification listeners:', error);
+    }
   }
 
-  // Handle incoming notifications
-  handleNotificationReceived(notification) {
-    const { title, body, data } = notification.request.content;
+  // Set up token refresh interval
+  setupTokenRefresh() {
+    // Refresh token every 24 hours
+    this.tokenRefreshInterval = setInterval(async () => {
+      await this.refreshToken();
+    }, 24 * 60 * 60 * 1000);
+  }
+
+  // Handle token refresh
+  async handleTokenRefresh() {
+    try {
+      console.log('🔄 FCM token refreshed');
+      await this.getFcmToken();
+      await this.registerTokenWithServer();
+    } catch (error) {
+      console.error('❌ Error handling token refresh:', error);
+    }
+  }
+
+  // Refresh token manually
+  async refreshToken() {
+    try {
+      if (!global.firebase) return;
+      
+      await global.firebase.messaging().deleteToken();
+      await this.getFcmToken();
+      await this.registerTokenWithServer();
+    } catch (error) {
+      console.error('❌ Error refreshing token:', error);
+    }
+  }
+
+  // Handle foreground messages
+  handleForegroundMessage(message) {
+    console.log('📱 Foreground message received:', message);
     
-    // You can add custom logic here based on notification type
-    switch (data?.type) {
+    const { title, body, data } = message.notification;
+    
+    // Show local notification
+    this.showLocalNotification(title, body, data);
+    
+    // Handle message based on type
+    this.handleMessageByType(data);
+  }
+
+  // Handle background messages
+  handleBackgroundMessage(message) {
+    console.log('📱 Background message received:', message);
+    
+    const { title, body, data } = message.notification;
+    
+    // Handle message based on type
+    this.handleMessageByType(data);
+  }
+
+  // Handle message based on type
+  handleMessageByType(data) {
+    const type = data?.type;
+    
+    switch (type) {
       case 'game_invite':
-        // Handle game invite notification
+        this.handleGameInvite(data);
         break;
       case 'match_found':
-        // Handle match found notification
+        this.handleMatchFound(data);
         break;
       case 'friend_request':
-        // Handle friend request notification
+        this.handleFriendRequest(data);
+        break;
+      case 'your_turn':
+        this.handleYourTurn(data);
+        break;
+      case 'game_result':
+        this.handleGameResult(data);
+        break;
+      case 'achievement':
+        this.handleAchievement(data);
+        break;
+      case 'connection_status':
+        this.handleConnectionStatus(data);
         break;
       default:
-        // Handle general notifications
-        break;
+        console.log('📱 Unknown notification type:', type);
     }
   }
 
-  // Handle notification responses (when user taps notification)
-  handleNotificationResponse(response) {
-    const { data } = response.notification.request.content;
-    
-    // Navigate based on notification type
-    switch (data?.type) {
-      case 'game_invite':
-        // Navigate to game invite screen
-        if (data.roomId) {
-          // Navigate to specific room
-        }
-        break;
-      case 'match_found':
-        // Navigate to game screen
-        if (data.gameId) {
-          // Navigate to specific game
-        }
-        break;
-      case 'friend_request':
-        // Navigate to friend requests screen
-        break;
-      default:
-        // Navigate to main menu or default screen
-        break;
-    }
-  }
-
-  // Send local notification
-  async sendLocalNotification(title, body, data = {}) {
+  // Show local notification
+  showLocalNotification(title, body, data = {}) {
     try {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title,
-          body,
-          data,
-          sound: 'default',
-        },
-        trigger: null, // Send immediately
-      });
+      // For now, just log the notification
+      // In a real implementation, you would use a notification library
+      console.log('🔔 Local notification:', { title, body, data });
+      
+      // You could integrate with react-native-push-notification or similar
+      // PushNotification.localNotification({
+      //   title,
+      //   message: body,
+      //   data
+      // });
     } catch (error) {
-      console.error('Failed to send local notification:', error);
+      console.error('❌ Error showing local notification:', error);
     }
   }
 
-  // Send scheduled notification
-  async scheduleNotification(title, body, trigger, data = {}) {
+  // Game-specific message handlers
+  handleGameInvite(data) {
+    console.log('🎮 Game invite received:', data);
+    // Navigate to game invite screen or show modal
+  }
+
+  handleMatchFound(data) {
+    console.log('🎯 Match found:', data);
+    // Navigate to game screen
+  }
+
+  handleFriendRequest(data) {
+    console.log('👥 Friend request received:', data);
+    // Navigate to friend requests screen
+  }
+
+  handleYourTurn(data) {
+    console.log('🎲 Your turn notification:', data);
+    // Navigate to game screen
+  }
+
+  handleGameResult(data) {
+    console.log('🏆 Game result:', data);
+    // Show game result modal
+  }
+
+  handleAchievement(data) {
+    console.log('🏅 Achievement unlocked:', data);
+    // Show achievement modal
+  }
+
+  handleConnectionStatus(data) {
+    console.log('🌐 Connection status:', data);
+    // Update connection status in app
+  }
+
+  // Register FCM token with server
+  async registerTokenWithServer() {
     try {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title,
-          body,
-          data,
-          sound: 'default',
+      const token = await this.getFcmToken();
+      if (!token) {
+        console.log('⚠️ No FCM token available for server registration');
+        return false;
+      }
+
+      const authToken = await AsyncStorage.getItem('authToken');
+      if (!authToken) {
+        console.log('⚠️ No auth token available for server registration');
+        return false;
+      }
+
+      const response = await fetch(`${config.API_BASE_URL}/notifications/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
         },
-        trigger,
+        body: JSON.stringify({
+          fcmToken: token,
+          platform: Platform.OS,
+          deviceId: await this.getDeviceId(),
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ FCM token registered with server:', result);
+      return true;
     } catch (error) {
-      console.error('Failed to schedule notification:', error);
+      console.error('❌ Failed to register FCM token with server:', error);
+      return false;
     }
   }
 
-  // Game-specific notification methods
-  async notifyMatchFound(opponentName, gameId, userId = null) {
-    const title = 'Match Found! 🎯';
-    const body = `You've been matched with ${opponentName}. Tap to join the game!`;
-    const data = { gameId, opponentName };
-    
-    if (userId) {
-      await this.sendComprehensiveNotification(userId, title, body, 'match_found', data);
-    } else {
-      await this.sendLocalNotification(title, body, { ...data, type: 'match_found' });
+  // Get device ID
+  async getDeviceId() {
+    try {
+      let deviceId = await AsyncStorage.getItem('deviceId');
+      if (!deviceId) {
+        deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        await AsyncStorage.setItem('deviceId', deviceId);
+      }
+      return deviceId;
+    } catch (error) {
+      console.error('Error getting device ID:', error);
+      return `device_${Date.now()}`;
     }
   }
 
-  async notifyGameInvite(inviterName, roomId, userId = null) {
-    const title = 'Game Invite 🎮';
-    const body = `${inviterName} invited you to play NumberMind!`;
-    const data = { roomId, inviterName };
-    
-    if (userId) {
-      await this.sendComprehensiveNotification(userId, title, body, 'game_invite', data);
-    } else {
-      await this.sendLocalNotification(title, body, { ...data, type: 'game_invite' });
-    }
-  }
-
-  async notifyFriendRequest(requesterName, userId = null) {
-    const title = 'Friend Request 👥';
-    const body = `${requesterName} wants to be your friend!`;
-    const data = { requesterName };
-    
-    if (userId) {
-      await this.sendComprehensiveNotification(userId, title, body, 'friend_request', data);
-    } else {
-      await this.sendLocalNotification(title, body, { ...data, type: 'friend_request' });
-    }
-  }
-
-  async notifyYourTurn(gameId, userId = null) {
-    const title = 'Your Turn! 🎲';
-    const body = 'It\'s your turn to make a guess!';
-    const data = { gameId };
-    
-    if (userId) {
-      await this.sendComprehensiveNotification(userId, title, body, 'your_turn', data);
-    } else {
-      await this.sendLocalNotification(title, body, { ...data, type: 'your_turn' });
-    }
-  }
-
-  async notifyGameResult(won, opponentName, score, userId = null) {
-    const title = won ? 'Victory! 🏆' : 'Game Over 💔';
-    const body = won 
-      ? `Congratulations! You beat ${opponentName} with ${score} points!`
-      : `Better luck next time! ${opponentName} won with ${score} points.`;
-    const data = { won, opponentName, score };
-    
-    if (userId) {
-      await this.sendComprehensiveNotification(userId, title, body, 'game_result', data);
-    } else {
-      await this.sendLocalNotification(title, body, { ...data, type: 'game_result' });
-    }
-  }
-
-  async notifyAchievement(achievementName, description, userId = null) {
-    const title = 'Achievement Unlocked! 🏅';
-    const body = `${achievementName}: ${description}`;
-    const data = { achievementName, description };
-    
-    if (userId) {
-      await this.sendComprehensiveNotification(userId, title, body, 'achievement', data);
-    } else {
-      await this.sendLocalNotification(title, body, { ...data, type: 'achievement' });
-    }
-  }
-
-  async notifyConnectionStatus(isConnected, userId = null) {
-    const title = isConnected ? 'Connected! 🌐' : 'Connection Lost! 📡';
-    const body = isConnected 
-      ? 'You\'re back online and ready to play!'
-      : 'Check your internet connection to continue playing.';
-    const data = { isConnected };
-    
-    if (userId) {
-      await this.sendComprehensiveNotification(userId, title, body, 'connection_status', data);
-    } else {
-      await this.sendLocalNotification(title, body, { ...data, type: 'connection_status' });
-    }
-  }
-
-  // Get push token for server registration
-  async getPushToken() {
-    if (!this.expoPushToken) {
-      this.expoPushToken = await AsyncStorage.getItem('expoPushToken');
-    }
-    return this.expoPushToken;
-  }
-
-  // Send notification to server (saves to database)
+  // Send notification to server
   async sendNotificationToServer(userId, title, body, type, data = {}) {
     try {
-      const token = await AsyncStorage.getItem('authToken');
-      if (!token) {
-        console.log('No auth token available for server notification');
+      const authToken = await AsyncStorage.getItem('authToken');
+      if (!authToken) {
+        console.log('⚠️ No auth token available for server notification');
         return false;
       }
 
@@ -283,7 +365,7 @@ class NotificationService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           userId,
@@ -299,61 +381,121 @@ class NotificationService {
       }
 
       const result = await response.json();
-      console.log('Notification sent to server successfully:', result);
+      console.log('✅ Notification sent to server:', result);
       return true;
     } catch (error) {
-      console.error('Failed to send notification to server:', error);
+      console.error('❌ Failed to send notification to server:', error);
       return false;
     }
   }
 
-  // Send comprehensive notification (both local and server)
-  async sendComprehensiveNotification(userId, title, body, type, data = {}) {
-    try {
-      // Send local notification for immediate display
-      await this.sendLocalNotification(title, body, { ...data, type });
-      
-      // Send to server for persistent storage
-      await this.sendNotificationToServer(userId, title, body, type, data);
-      
-      console.log('Comprehensive notification sent successfully');
-      return true;
-    } catch (error) {
-      console.error('Failed to send comprehensive notification:', error);
-      return false;
+  // Game-specific notification methods
+  async notifyMatchFound(opponentName, gameId, userId = null) {
+    const title = 'Match Found! 🎯';
+    const body = `You've been matched with ${opponentName}. Tap to join the game!`;
+    const data = { gameId, opponentName };
+    
+    if (userId) {
+      await this.sendNotificationToServer(userId, title, body, 'match_found', data);
+    } else {
+      this.showLocalNotification(title, body, { ...data, type: 'match_found' });
     }
   }
 
-  // Register push token with server
-  async registerPushToken(userId, token) {
-    // Don't register if no token is available (e.g., in Expo Go)
-    if (!token) {
-      console.log('No push token available to register');
-      return false;
+  async notifyGameInvite(inviterName, roomId, userId = null) {
+    const title = 'Game Invite 🎮';
+    const body = `${inviterName} invited you to play NumberMind!`;
+    const data = { roomId, inviterName };
+    
+    if (userId) {
+      await this.sendNotificationToServer(userId, title, body, 'game_invite', data);
+    } else {
+      this.showLocalNotification(title, body, { ...data, type: 'game_invite' });
     }
+  }
 
+  async notifyFriendRequest(requesterName, userId = null) {
+    const title = 'Friend Request 👥';
+    const body = `${requesterName} wants to be your friend!`;
+    const data = { requesterName };
+    
+    if (userId) {
+      await this.sendNotificationToServer(userId, title, body, 'friend_request', data);
+    } else {
+      this.showLocalNotification(title, body, { ...data, type: 'friend_request' });
+    }
+  }
+
+  async notifyYourTurn(gameId, userId = null) {
+    const title = 'Your Turn! 🎲';
+    const body = 'It\'s your turn to make a guess!';
+    const data = { gameId };
+    
+    if (userId) {
+      await this.sendNotificationToServer(userId, title, body, 'your_turn', data);
+    } else {
+      this.showLocalNotification(title, body, { ...data, type: 'your_turn' });
+    }
+  }
+
+  async notifyGameResult(won, opponentName, score, userId = null) {
+    const title = won ? 'Victory! 🏆' : 'Game Over 💔';
+    const body = won 
+      ? `Congratulations! You beat ${opponentName} with ${score} points!`
+      : `Better luck next time! ${opponentName} won with ${score} points.`;
+    const data = { won, opponentName, score };
+    
+    if (userId) {
+      await this.sendNotificationToServer(userId, title, body, 'game_result', data);
+    } else {
+      this.showLocalNotification(title, body, { ...data, type: 'game_result' });
+    }
+  }
+
+  async notifyAchievement(achievementName, description, userId = null) {
+    const title = 'Achievement Unlocked! 🏅';
+    const body = `${achievementName}: ${description}`;
+    const data = { achievementName, description };
+    
+    if (userId) {
+      await this.sendNotificationToServer(userId, title, body, 'achievement', data);
+    } else {
+      this.showLocalNotification(title, body, { ...data, type: 'achievement' });
+    }
+  }
+
+  async notifyConnectionStatus(isConnected, userId = null) {
+    const title = isConnected ? 'Connected! 🌐' : 'Connection Lost! 📡';
+    const body = isConnected 
+      ? 'You\'re back online and ready to play!'
+      : 'Check your internet connection to continue playing.';
+    const data = { isConnected };
+    
+    if (userId) {
+      await this.sendNotificationToServer(userId, title, body, 'connection_status', data);
+    } else {
+      this.showLocalNotification(title, body, { ...data, type: 'connection_status' });
+    }
+  }
+
+  // Get FCM token for external use
+  async getFcmTokenForServer() {
+    if (!this.fcmToken) {
+      await this.getFcmToken();
+    }
+    return this.fcmToken;
+  }
+
+  // Check if notifications are enabled
+  async areNotificationsEnabled() {
     try {
-      const response = await fetch(`${config.API_BASE_URL}/notifications/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await AsyncStorage.getItem('authToken')}`,
-        },
-        body: JSON.stringify({
-          userId,
-          pushToken: token,
-          platform: Platform.OS,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to register push token');
+      if (global.firebase) {
+        const authStatus = await global.firebase.messaging().hasPermission();
+        return authStatus === 'authorized';
       }
-
-      console.log('Push token registered successfully');
-      return true;
+      return true; // Fallback
     } catch (error) {
-      console.error('Failed to register push token:', error);
+      console.error('Error checking notification permissions:', error);
       return false;
     }
   }
@@ -361,24 +503,41 @@ class NotificationService {
   // Clear all notifications
   async clearAllNotifications() {
     try {
-      await Notifications.dismissAllNotificationsAsync();
-      await Notifications.setBadgeCountAsync(0);
+      // Clear badge count
+      if (global.firebase) {
+        await global.firebase.messaging().setBadgeCount(0);
+      }
+      console.log('✅ All notifications cleared');
     } catch (error) {
-      console.error('Failed to clear notifications:', error);
+      console.error('❌ Error clearing notifications:', error);
     }
   }
 
-  // Clean up listeners
+  // Clean up resources
   cleanup() {
-    if (this.notificationListener) {
-      Notifications.removeNotificationSubscription(this.notificationListener);
-    }
-    if (this.responseListener) {
-      Notifications.removeNotificationSubscription(this.responseListener);
+    try {
+      // Clear intervals
+      if (this.tokenRefreshInterval) {
+        clearInterval(this.tokenRefreshInterval);
+      }
+
+      // Remove listeners
+      this.notificationListeners.forEach(listener => {
+        if (listener && typeof listener === 'function') {
+          listener();
+        }
+      });
+
+      this.notificationListeners = [];
+      this.isInitialized = false;
+      
+      console.log('✅ Notification service cleaned up');
+    } catch (error) {
+      console.error('❌ Error cleaning up notification service:', error);
     }
   }
 }
 
 // Export singleton instance
-export default new NotificationService();
+export default new FirebaseNotificationService();
 

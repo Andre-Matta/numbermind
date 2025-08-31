@@ -191,8 +191,8 @@ const userSchema = new mongoose.Schema({
     }
   },
   
-  // Push Notification Tokens
-  pushTokens: [{
+  // Firebase Cloud Messaging Tokens
+  fcmTokens: [{
     token: {
       type: String,
       required: true

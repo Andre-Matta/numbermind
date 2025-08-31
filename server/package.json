@@ -15,7 +15,9 @@
     "test-leaderboard": "node scripts/testLeaderboard.js",
     "test-auth": "node scripts/testAuth.js",
     "test-multiplayer": "node scripts/test-multiplayer.js",
-    "test-socket": "node scripts/test-socket-connection.js"
+    "test-socket": "node scripts/test-socket-connection.js",
+    "migrate-firebase": "node scripts/migrate-to-firebase.js",
+    "test-firebase": "node scripts/test-firebase.js"
   },
   "dependencies": {
     "axios": "^1.6.0",
