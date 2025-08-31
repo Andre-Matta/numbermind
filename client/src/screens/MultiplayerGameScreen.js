@@ -22,6 +22,12 @@ const { width, height } = Dimensions.get('window');
 export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
   const { userSkins } = useData();
   const [gameState, setGameState] = useState('waiting'); // waiting, setup, playing, finished
+  
+  // Custom setter to keep ref in sync
+  const setGameStateWithRef = (newState) => {
+    currentGameStateRef.current = newState;
+    setGameState(newState);
+  };
   const [currentGuess, setCurrentGuess] = useState(['', '', '', '', '']);
   const [secretNumber, setSecretNumber] = useState(['', '', '', '', '']);
   const [guesses, setGuesses] = useState([]);
@@ -36,9 +42,11 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
   const [selectedSkin, setSelectedSkin] = useState('default');
   const [showSkinSelector, setShowSkinSelector] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState('connecting');
   
   const typingTimeoutRef = useRef(null);
   const inputRef = useRef(null);
+  const currentGameStateRef = useRef('waiting');
   const [boxAnimations] = useState([
     new Animated.Value(1),
     new Animated.Value(1),
@@ -58,7 +66,16 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
   const availableSkins = userSkins || ['default'];
 
   useEffect(() => {
-    setupGame();
+    const initializeGame = async () => {
+      try {
+        await setupGame();
+      } catch (error) {
+        console.error('❌ Error setting up game:', error);
+        Alert.alert('Error', 'Failed to set up game: ' + error.message);
+      }
+    };
+    
+    initializeGame();
     
     // Handle hardware back button
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -78,6 +95,8 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
       NetworkService.onPlayerJoined = null;
       NetworkService.onPlayerLeft = null;
       NetworkService.onDisconnect = null;
+      NetworkService.onRoomReady = null;
+      NetworkService.onConnectionError = null;
     };
   }, [onBack]);
 
@@ -91,7 +110,7 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     onBack();
   };
 
-  const setupGame = () => {
+  const setupGame = async () => {
     console.log('🔧 Setting up multiplayer game...');
     console.log('🔍 Current NetworkService state:', {
       isConnected: NetworkService.isConnected(),
@@ -99,7 +118,7 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
       playerId: NetworkService.playerId
     });
     
-    // Set up game event listeners
+    // Set up game event listeners BEFORE attempting connection
     NetworkService.onGameStart = handleGameUpdate;
     NetworkService.onGuessReceived = handleOpponentGuess;
     NetworkService.onGameEnd = handleGameEnd;
@@ -107,18 +126,68 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     NetworkService.onPlayerLeft = handlePlayerLeft;
     NetworkService.onDisconnect = handleDisconnection;
     NetworkService.onRoomReady = handleRoomReady;
+    NetworkService.onConnectionError = handleConnectionError;
     
     console.log('✅ Event listeners set up');
+    
+    // Ensure we're connected to the server
+    if (!NetworkService.isConnected()) {
+      console.log('🔌 Not connected to server, attempting connection...');
+      setConnectionStatus('connecting');
+      try {
+        await NetworkService.connect();
+        console.log('✅ Successfully connected to server');
+        setConnectionStatus('connected');
+      } catch (error) {
+        console.error('❌ Failed to connect to server:', error);
+        setConnectionStatus('error');
+        throw error;
+      }
+    } else {
+      console.log('✅ Already connected to server');
+      setConnectionStatus('connected');
+    }
+    
+    // Check if we need to join the room
+    if (NetworkService.roomId !== roomId) {
+      console.log('🔄 Need to join room:', roomId);
+      try {
+        await NetworkService.joinRoom(roomId);
+        console.log('✅ Successfully joined room:', roomId);
+      } catch (error) {
+        console.error('❌ Failed to join room:', error);
+        Alert.alert('Error', 'Failed to join room: ' + error.message);
+        return;
+      }
+    } else {
+      console.log('🔄 Already in room:', roomId);
+    }
+    
+    // Immediately check if room is ready after joining
+    console.log('🔍 Checking if room is ready immediately after joining...');
+    try {
+      const status = await NetworkService.checkRoomStatus(roomId);
+      console.log('🔍 Room status check result:', status);
+      if (status.isReady) {
+        console.log('✅ Room is ready! Transitioning to setup state');
+        setGameStateWithRef('setup');
+        Alert.alert('Room Ready!', 'Both players are now in the room. Enter your secret number to start the game.');
+      } else {
+        console.log('⏳ Room is not ready yet, waiting for roomReady event...');
+      }
+    } catch (error) {
+      console.error('❌ Error checking room status immediately:', error);
+    }
     
     // Check if game is already in progress
     if (NetworkService.roomId === roomId) {
       console.log('🔄 Game already in progress, checking state...');
       // Check if both players have submitted their numbers
       // Start in waiting state and let room events determine the proper state
-      setGameState('waiting');
+      setGameStateWithRef('waiting');
     } else {
       console.log('🆕 New game setup');
-      setGameState('waiting');
+      setGameStateWithRef('waiting');
     }
     
     // Set up typing listener after a short delay to ensure connection is ready
@@ -129,13 +198,14 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     // Add a fallback check for room readiness after a delay
     // This handles cases where roomReady event might have been missed
     setTimeout(async () => {
-      if (gameState === 'waiting') {
+      // Only check if we're still in waiting state
+      if (currentGameStateRef.current === 'waiting') {
         console.log('⏰ Fallback check: Checking if room is already ready...');
         try {
           const status = await NetworkService.checkRoomStatus(roomId);
           if (status.isReady) {
             console.log('✅ Room is ready! Transitioning to setup state');
-            setGameState('setup');
+            setGameStateWithRef('setup');
             Alert.alert('Room Ready!', 'Both players are now in the room. Enter your secret number to start the game.');
           } else {
             console.log('⏳ Room is not ready yet, continuing to wait...');
@@ -143,6 +213,8 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
         } catch (error) {
           console.error('❌ Error checking room status:', error);
         }
+      } else {
+        console.log('⏰ Fallback check skipped - game state is already:', currentGameStateRef.current);
       }
     }, 3000);
   };
@@ -161,13 +233,17 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
   const handleRoomReady = (data) => {
     console.log('🏠 Room ready event received:', data);
     console.log('🔍 Current roomId:', roomId, 'Event roomId:', data.roomId);
-    console.log('🔍 Current gameState:', gameState);
+    console.log('🔍 Current gameState:', currentGameStateRef.current);
+    console.log('🔍 NetworkService roomId:', NetworkService.roomId);
+    console.log('🔍 NetworkService playerId:', NetworkService.playerId);
+    
     if (data.roomId === roomId) {
       console.log('✅ Room is ready, transitioning to setup state');
-      setGameState('setup');
+      setGameStateWithRef('setup');
       Alert.alert('Room Ready!', 'Both players are now in the room. Enter your secret number to start the game.');
     } else {
       console.log('❌ Room ready for different room, ignoring');
+      console.log('❌ Expected roomId:', roomId, 'Received roomId:', data.roomId);
     }
   };
 
@@ -176,24 +252,22 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     console.log('🔍 Current roomId:', roomId, 'Event roomId:', data.roomId);
     if (data.roomId === roomId) {
       console.log('✅ Player left our room, transitioning to waiting state');
-      setGameState('waiting');
+      setGameStateWithRef('waiting');
       Alert.alert('Player Left', 'The other player has left the room. You can wait for them to rejoin or go back to the lobby.');
     } else {
       console.log('❌ Player left different room, ignoring');
     }
   };
 
-  const handleDisconnection = (error) => {
-    console.log('🔌 Disconnection event received:', error);
-    setConnectionError(error?.message || 'Connection lost to server');
-    setGameState('waiting');
+  const handleDisconnection = (reason) => {
+    console.log('🔌 Disconnection event received:', reason);
+    setConnectionError('Connection lost to server: ' + (reason || 'Unknown reason'));
+    setConnectionStatus('error');
+    setGameStateWithRef('waiting');
     
     // Clear any ongoing game state
     setHasSubmittedNumber(false);
     setIsMyTurn(false);
-    
-    // Force cleanup of the connection
-    NetworkService.forceDisconnect();
     
     Alert.alert(
       'Connection Lost', 
@@ -203,6 +277,37 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
           text: 'Retry',
           onPress: () => {
             setConnectionError(null);
+            setConnectionStatus('connecting');
+            setupGame();
+          }
+        },
+        {
+          text: 'Go Back',
+          onPress: handleBack
+        }
+      ]
+    );
+  };
+
+  const handleConnectionError = (error) => {
+    console.log('🔌 Connection error event received:', error);
+    setConnectionError(error?.message || 'Connection lost to server');
+    setConnectionStatus('error');
+    setGameStateWithRef('waiting');
+    
+    // Clear any ongoing game state
+    setHasSubmittedNumber(false);
+    setIsMyTurn(false);
+    
+    Alert.alert(
+      'Connection Error', 
+      'Your connection to the server has been lost. Please check your internet connection and try again.',
+      [
+        {
+          text: 'Retry',
+          onPress: () => {
+            setConnectionError(null);
+            setConnectionStatus('connecting');
             setupGame();
           }
         },
@@ -239,8 +344,8 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     console.log('🔍 Current roomId:', roomId, 'Event roomId:', data.roomId);
     if (data.roomId === roomId) {
       console.log('✅ Game update for our room, transitioning to playing state');
-      console.log('✅ Game state transitioning from', gameState, 'to playing');
-      setGameState('playing');
+      console.log('✅ Game state transitioning from', currentGameStateRef.current, 'to playing');
+      setGameStateWithRef('playing');
       const isMyTurnNow = data.currentTurn === NetworkService.playerId;
       console.log('🎯 Current turn:', data.currentTurn, 'Player ID:', NetworkService.playerId, 'Is my turn:', isMyTurnNow);
       setIsMyTurn(isMyTurnNow);
@@ -280,7 +385,7 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     console.log('🔍 Current roomId:', roomId, 'Event roomId:', data.roomId);
     if (data.roomId === roomId) {
       console.log('✅ Game end for our room, transitioning to finished state');
-      setGameState('finished');
+      setGameStateWithRef('finished');
       setGameResult(data);
       onGameEnd && onGameEnd(data);
     } else {
@@ -663,6 +768,7 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
                 style={styles.retryButton} 
                 onPress={() => {
                   setConnectionError(null);
+                  setConnectionStatus('connecting');
                   setupGame();
                 }}
               >
@@ -674,6 +780,19 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
               <ActivityIndicator size="large" color="#4a90e2" />
               <Text style={styles.waitingText}>Waiting for opponent to join...</Text>
               <Text style={styles.roomIdText}>Room: {roomId}</Text>
+              
+              {/* Connection Status Indicator */}
+              <View style={styles.connectionStatusContainer}>
+                <View style={[
+                  styles.connectionStatusIndicator, 
+                  { backgroundColor: connectionStatus === 'connected' ? '#28a745' : 
+                                   connectionStatus === 'connecting' ? '#ffc107' : '#dc3545' }
+                ]} />
+                <Text style={styles.connectionStatusText}>
+                  {connectionStatus === 'connected' ? 'Connected to Server' :
+                   connectionStatus === 'connecting' ? 'Connecting...' : 'Connection Error'}
+                </Text>
+              </View>
               
               <TouchableOpacity style={styles.cancelButton} onPress={handleBack}>
                 <Text style={styles.cancelButtonText}>Cancel & Return to Lobby</Text>
@@ -1165,7 +1284,27 @@ const styles = StyleSheet.create({
    misplacedDot: {
      backgroundColor: '#ffc107', // Yellow for misplaced
    },
-   outOfPlaceDot: {
-     backgroundColor: '#dc3545', // Red for out of place
-   },
+     outOfPlaceDot: {
+    backgroundColor: '#dc3545', // Red for out of place
+  },
+  connectionStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 15,
+    padding: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 10,
+  },
+  connectionStatusIndicator: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 8,
+  },
+  connectionStatusText: {
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: '500',
+  },
  });

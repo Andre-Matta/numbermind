@@ -11,6 +11,8 @@ class NetworkService {
     this.playerId = null;
     this.isConnecting = false;
     this.connectionPromise = null;
+    this.connectionRetries = 0;
+    this.maxRetries = 3;
     
     // Event callbacks
     this.onGameStart = null;
@@ -21,6 +23,7 @@ class NetworkService {
     this.onPlayerTyping = null;
     this.onDisconnect = null;
     this.onRoomReady = null;
+    this.onConnectionError = null;
   }
 
   // Initialize connection to server
@@ -38,15 +41,49 @@ class NetworkService {
     this.connectionPromise = new Promise(async (resolve, reject) => {
       try {
         const url = config.SERVER_URL;
-        console.log('Attempting to connect to:', url);
+        console.log('🔌 Attempting to connect to:', url);
+        
+        // Test server health first
+        console.log('🏥 Testing server health...');
+        const serverHealthy = await this.testConnection();
+        if (!serverHealthy) {
+          this.isConnecting = false;
+          const error = new Error('Server is not responding. Please check your internet connection or try again later.');
+          console.error('❌ Server health check failed');
+          if (this.onConnectionError) {
+            this.onConnectionError(error);
+          }
+          reject(error);
+          return;
+        }
+        console.log('✅ Server health check passed');
+        
+        // Check authentication status
+        if (!this.isAuthenticated()) {
+          this.isConnecting = false;
+          const error = new Error('You must be logged in to play multiplayer games');
+          console.error('❌ Authentication required:', error.message);
+          if (this.onConnectionError) {
+            this.onConnectionError(error);
+          }
+          reject(error);
+          return;
+        }
         
         // Get authentication token
         const token = AuthService.getToken();
         if (!token) {
           this.isConnecting = false;
-          reject(new Error('No authentication token available'));
+          const error = new Error('No authentication token available');
+          console.error('❌ Authentication error:', error.message);
+          if (this.onConnectionError) {
+            this.onConnectionError(error);
+          }
+          reject(error);
           return;
         }
+        
+        console.log('🔑 Using token:', token.substring(0, 20) + '...');
         
         this.socket = io(url, {
           transports: ['websocket', 'polling'],
@@ -64,67 +101,81 @@ class NetworkService {
         });
 
         this.socket.on('connect', () => {
-          console.log('Connected to server');
+          console.log('✅ Connected to server successfully');
           this.playerId = this.socket.id;
           this.isConnecting = false;
+          this.connectionRetries = 0;
           resolve(true);
         });
 
         this.socket.on('connect_error', (error) => {
-          console.error('Connection error details:', {
+          console.error('❌ Connection error details:', {
             message: error.message,
             description: error.description,
             context: error.context,
             type: error.type
           });
           this.isConnecting = false;
-          reject(error);
+          
+          // Retry connection if we haven't exceeded max retries
+          if (this.connectionRetries < this.maxRetries) {
+            this.connectionRetries++;
+            console.log(`🔄 Retrying connection (${this.connectionRetries}/${this.maxRetries})...`);
+            setTimeout(() => {
+              this.connect().then(resolve).catch(reject);
+            }, 2000 * this.connectionRetries); // Exponential backoff
+          } else {
+            if (this.onConnectionError) {
+              this.onConnectionError(error);
+            }
+            reject(error);
+          }
         });
 
-        this.socket.on('disconnect', () => {
-          console.log('Disconnected from server');
+        this.socket.on('disconnect', (reason) => {
+          console.log('🔌 Disconnected from server. Reason:', reason);
           this.isConnecting = false;
           this.handleDisconnection();
           
           // Notify UI about disconnection
           if (this.onDisconnect) {
-            this.onDisconnect();
+            this.onDisconnect(reason);
           }
         });
 
         // Game event handlers - match server event names exactly
         this.socket.on('gameStarted', (data) => {
-          console.log('Game started event received:', data);
+          console.log('🎮 Game started event received:', data);
           if (this.onGameStart) this.onGameStart(data);
         });
 
         this.socket.on('playerJoined', (data) => {
-          console.log('Player joined event received:', data);
+          console.log('👥 Player joined event received:', data);
           if (this.onPlayerJoined) this.onPlayerJoined(data);
         });
 
         this.socket.on('playerDisconnected', (data) => {
-          console.log('Player disconnected event received:', data);
+          console.log('👋 Player disconnected event received:', data);
           if (this.onPlayerLeft) this.onPlayerLeft(data);
         });
 
         this.socket.on('guessSubmitted', (data) => {
-          console.log('Guess submitted event received:', data);
+          console.log('🎯 Guess submitted event received:', data);
           if (this.onGuessReceived) this.onGuessReceived(data);
         });
 
         this.socket.on('gameEnded', (data) => {
-          console.log('Game ended event received:', data);
+          console.log('🏁 Game ended event received:', data);
           if (this.onGameEnd) this.onGameEnd(data);
         });
 
         this.socket.on('playerTyping', (data) => {
-          console.log('Player typing event received:', data);
+          console.log('⌨️ Player typing event received:', data);
           if (this.onPlayerTyping) this.onPlayerTyping(data);
         });
 
         this.socket.on('roomReady', (data) => {
-          console.log('Room ready event received:', data);
+          console.log('🏠 Room ready event received:', data);
           console.log('🔍 onRoomReady callback exists:', !!this.onRoomReady);
           if (this.onRoomReady) {
             console.log('✅ Calling onRoomReady callback');
@@ -138,12 +189,21 @@ class NetworkService {
         setTimeout(() => {
           if (this.isConnecting) {
             this.isConnecting = false;
-            reject(new Error('Connection timeout'));
+            const timeoutError = new Error('Connection timeout');
+            console.error('⏰ Connection timeout');
+            if (this.onConnectionError) {
+              this.onConnectionError(timeoutError);
+            }
+            reject(timeoutError);
           }
         }, config.SOCKET_TIMEOUT);
 
       } catch (error) {
         this.isConnecting = false;
+        console.error('❌ Error in connect method:', error);
+        if (this.onConnectionError) {
+          this.onConnectionError(error);
+        }
         reject(error);
       }
     });
@@ -386,6 +446,7 @@ class NetworkService {
     this.onPlayerTyping = null;
     this.onDisconnect = null;
     this.onRoomReady = null;
+    this.onConnectionError = null;
     
     // Clean up socket
     if (this.socket) {
@@ -430,6 +491,42 @@ class NetworkService {
   // Check if connected to server
   isConnected() {
     return this.socket && this.socket.connected && !this.isConnecting;
+  }
+
+  // Check if user is authenticated
+  isAuthenticated() {
+    return AuthService.checkAuth();
+  }
+
+  // Get authentication status
+  getAuthStatus() {
+    return {
+      isAuthenticated: AuthService.checkAuth(),
+      hasToken: !!AuthService.getToken(),
+      user: AuthService.getCurrentUser()
+    };
+  }
+
+  // Test server connection
+  async testConnection() {
+    try {
+      const response = await fetch(`${config.SERVER_URL}/health`, {
+        method: 'GET',
+        timeout: 5000
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Server health check passed:', data);
+        return true;
+      } else {
+        console.error('❌ Server health check failed:', response.status);
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Server health check error:', error);
+      return false;
+    }
   }
 
   // Get room info
