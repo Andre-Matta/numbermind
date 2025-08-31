@@ -20,6 +20,7 @@ class NetworkService {
     this.onGameEnd = null;
     this.onPlayerTyping = null;
     this.onDisconnect = null;
+    this.onRoomReady = null;
   }
 
   // Initialize connection to server
@@ -124,7 +125,13 @@ class NetworkService {
 
         this.socket.on('roomReady', (data) => {
           console.log('Room ready event received:', data);
-          if (this.onRoomReady) this.onRoomReady(data);
+          console.log('🔍 onRoomReady callback exists:', !!this.onRoomReady);
+          if (this.onRoomReady) {
+            console.log('✅ Calling onRoomReady callback');
+            this.onRoomReady(data);
+          } else {
+            console.log('❌ onRoomReady callback not set');
+          }
         });
 
         // Set connection timeout
@@ -304,6 +311,41 @@ class NetworkService {
     }
   }
 
+  // Check room status
+  checkRoomStatus(roomId) {
+    return new Promise((resolve, reject) => {
+      if (!this.socket || !this.socket.connected) {
+        reject(new Error('Not connected to server'));
+        return;
+      }
+
+      if (!roomId || typeof roomId !== 'string') {
+        reject(new Error('Invalid room ID'));
+        return;
+      }
+
+      // Add timeout to prevent hanging
+      const timeout = setTimeout(() => {
+        reject(new Error('Request timed out'));
+      }, 10000); // 10 second timeout
+
+      try {
+        this.socket.emit('checkRoomStatus', { roomId }, (response) => {
+          clearTimeout(timeout);
+          
+          if (response && response.success) {
+            resolve(response);
+          } else {
+            reject(new Error(response?.error || 'Failed to check room status'));
+          }
+        });
+      } catch (error) {
+        clearTimeout(timeout);
+        reject(error);
+      }
+    });
+  }
+
   // Disconnect from server
   disconnect() {
     if (this.socket) {
@@ -343,6 +385,7 @@ class NetworkService {
     this.onGameEnd = null;
     this.onPlayerTyping = null;
     this.onDisconnect = null;
+    this.onRoomReady = null;
     
     // Clean up socket
     if (this.socket) {
@@ -355,6 +398,7 @@ class NetworkService {
         this.socket.off('guessSubmitted');
         this.socket.off('gameEnded');
         this.socket.off('playerTyping');
+        this.socket.off('roomReady');
       } catch (error) {
         console.error('Error cleaning up socket listeners:', error);
       }
@@ -444,6 +488,7 @@ class NetworkService {
         this.socket.off('guessSubmitted');
         this.socket.off('gameEnded');
         this.socket.off('playerTyping');
+        this.socket.off('roomReady');
       } catch (error) {
         console.error('Error cleaning up event listeners:', error);
       }

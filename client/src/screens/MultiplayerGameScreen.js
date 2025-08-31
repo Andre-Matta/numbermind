@@ -125,6 +125,26 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     setTimeout(() => {
       setupTypingListener();
     }, 1000);
+    
+    // Add a fallback check for room readiness after a delay
+    // This handles cases where roomReady event might have been missed
+    setTimeout(async () => {
+      if (gameState === 'waiting') {
+        console.log('⏰ Fallback check: Checking if room is already ready...');
+        try {
+          const status = await NetworkService.checkRoomStatus(roomId);
+          if (status.isReady) {
+            console.log('✅ Room is ready! Transitioning to setup state');
+            setGameState('setup');
+            Alert.alert('Room Ready!', 'Both players are now in the room. Enter your secret number to start the game.');
+          } else {
+            console.log('⏳ Room is not ready yet, continuing to wait...');
+          }
+        } catch (error) {
+          console.error('❌ Error checking room status:', error);
+        }
+      }
+    }, 3000);
   };
 
   const handlePlayerJoined = (data) => {
@@ -141,6 +161,7 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
   const handleRoomReady = (data) => {
     console.log('🏠 Room ready event received:', data);
     console.log('🔍 Current roomId:', roomId, 'Event roomId:', data.roomId);
+    console.log('🔍 Current gameState:', gameState);
     if (data.roomId === roomId) {
       console.log('✅ Room is ready, transitioning to setup state');
       setGameState('setup');

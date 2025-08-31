@@ -143,6 +143,21 @@ const setupSocketIO = (server) => {
           // Player is already in room, just join the socket room
           socket.join(roomId);
           console.log(`✅ User ${socket.user.username} already in room ${roomId}, just joined socket room`);
+          
+          // If room is full and we're already in it, emit roomReady event
+          if (game.players.length === 2) {
+            console.log(`🎮 Room ${roomId} is already full with 2 players. Emitting roomReady event.`);
+            console.log(`📡 Emitting roomReady event to room ${roomId}`);
+            console.log(`🔍 Players in room:`, game.players);
+            console.log(`🔍 Socket IDs in room:`, Array.from(io.sockets.adapter.rooms.get(roomId) || []));
+            io.to(roomId).emit('roomReady', {
+              roomId,
+              players: game.players,
+              message: 'Room is full! Both players can now set up their secret numbers.'
+            });
+            console.log(`✅ roomReady event emitted`);
+          }
+          
           return callback({
             success: true,
             roomId,
@@ -210,11 +225,15 @@ const setupSocketIO = (server) => {
           console.log(`🎮 Room ${roomId} is now full with 2 players. Ready for setup phase.`);
           
           // Notify all players that the room is full and ready for setup
+          console.log(`📡 Emitting roomReady event to room ${roomId}`);
+          console.log(`🔍 Players in room:`, game.players);
+          console.log(`🔍 Socket IDs in room:`, Array.from(io.sockets.adapter.rooms.get(roomId) || []));
           io.to(roomId).emit('roomReady', {
             roomId,
             players: game.players,
             message: 'Room is full! Both players can now set up their secret numbers.'
           });
+          console.log(`✅ roomReady event emitted`);
 
           // Send push notifications to both players
           try {
@@ -326,6 +345,62 @@ const setupSocketIO = (server) => {
         console.error('Error leaving queue:', error);
         if (typeof callback === 'function') {
           callback({ success: false, error: 'Failed to leave queue' });
+        }
+      }
+    });
+
+    // Handle room status check
+    socket.on('checkRoomStatus', async (data, callback) => {
+      try {
+        // Ensure callback is a function
+        if (typeof callback !== 'function') {
+          console.error('checkRoomStatus: callback is not a function');
+          return;
+        }
+
+        const { roomId } = data;
+        console.log(`🔍 User ${socket.user.username} checking status of room ${roomId}`);
+        
+        if (!roomId) {
+          return callback({ success: false, error: 'Room ID is required' });
+        }
+
+        const game = gameRooms.get(roomId);
+
+        if (!game) {
+          return callback({ success: false, error: 'Room not found' });
+        }
+
+        if (!game.players.includes(socket.userId)) {
+          return callback({ success: false, error: 'Not in this room' });
+        }
+
+        const response = {
+          success: true,
+          roomId,
+          game: game.toObject(),
+          isReady: game.players.length === 2 && game.gameState === 'waiting'
+        };
+
+        // If room is ready but game state is still waiting, emit roomReady event
+        if (response.isReady) {
+          console.log(`🎮 Room ${roomId} is ready but game state is waiting. Emitting roomReady event.`);
+          console.log(`📡 Emitting roomReady event to room ${roomId}`);
+          console.log(`🔍 Players in room:`, game.players);
+          console.log(`🔍 Socket IDs in room:`, Array.from(io.sockets.adapter.rooms.get(roomId) || []));
+          io.to(roomId).emit('roomReady', {
+            roomId,
+            players: game.players,
+            message: 'Room is full! Both players can now set up their secret numbers.'
+          });
+          console.log(`✅ roomReady event emitted`);
+        }
+
+        callback(response);
+      } catch (error) {
+        console.error('Error checking room status:', error);
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to check room status' });
         }
       }
     });
