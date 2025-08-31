@@ -324,7 +324,7 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     // Check if NetworkService is connected and has the typing handler
     if (NetworkService.socket && NetworkService.socket.connected) {
       console.log('✅ NetworkService connected, setting up typing handler');
-      NetworkService.onPlayerTyping((data) => {
+      NetworkService.onPlayerTypingFunction((data) => {
         console.log('⌨️ Typing event received:', data);
         if (data.roomId === roomId && data.playerId !== NetworkService.playerId) {
           console.log('✅ Typing event for our room, updating UI');

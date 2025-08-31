@@ -171,7 +171,7 @@ class NetworkService {
 
         this.socket.on('playerTyping', (data) => {
           console.log('⌨️ Player typing event received:', data);
-          if (this.onPlayerTyping) this.onPlayerTyping(data);
+          if (this.onPlayerTyping) this.onPlayerTypingFunction(data);
         });
 
         this.socket.on('roomReady', (data) => {
@@ -554,7 +554,7 @@ class NetworkService {
   }
 
   // Listen for typing updates
-  onPlayerTyping(callback) {
+  onPlayerTypingFunction(callback) {
     if (!this.socket) return;
     
     try {
