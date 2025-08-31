@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Game = require('../models/Game');
 const { verifyToken } = require('../utils/jwtUtils');
+const firebaseNotificationService = require('../services/firebaseNotificationService');
 
 let io;
 
@@ -177,6 +178,25 @@ const setupSocketIO = (server) => {
           roomId
         });
 
+        // Send push notification to host when someone joins
+        if (game.host !== socket.userId) {
+          try {
+            await firebaseNotificationService.sendToUser(
+              game.host,
+              'Player Joined! 👥',
+              `${socket.user.username} joined your room`,
+              {
+                type: 'player_joined',
+                roomId,
+                playerName: socket.user.username,
+                playerId: socket.userId
+              }
+            );
+          } catch (error) {
+            console.error('Error sending player joined notification:', error);
+          }
+        }
+
         callback({
           success: true,
           roomId,
@@ -195,6 +215,23 @@ const setupSocketIO = (server) => {
             players: game.players,
             message: 'Room is full! Both players can now set up their secret numbers.'
           });
+
+          // Send push notifications to both players
+          try {
+            const otherPlayerId = game.players.find(p => p !== socket.userId);
+            await firebaseNotificationService.sendToUsers(
+              [socket.userId, otherPlayerId],
+              'Room Ready! 🎮',
+              'Both players are in the room. Set up your secret number to start!',
+              {
+                type: 'room_ready',
+                roomId,
+                players: game.players
+              }
+            );
+          } catch (error) {
+            console.error('Error sending room ready notification:', error);
+          }
         }
       } catch (error) {
         console.error('Error joining room:', error);
@@ -443,6 +480,35 @@ const setupSocketIO = (server) => {
             gameMode: game.gameMode
           });
 
+          // Send push notifications to both players
+          try {
+            await firebaseNotificationService.sendToUsers(
+              game.players,
+              'Game Started! 🎮',
+              'The game has begun! Good luck!',
+              {
+                type: 'game_started',
+                roomId,
+                currentTurn: game.currentTurn,
+                gameMode: game.gameMode
+              }
+            );
+
+            // Send "Your Turn" notification to the first player
+            await firebaseNotificationService.sendToUser(
+              game.currentTurn,
+              'Your Turn! 🎲',
+              'It\'s your turn to make a guess!',
+              {
+                type: 'your_turn',
+                roomId,
+                gameMode: game.gameMode
+              }
+            );
+          } catch (error) {
+            console.error('Error sending game started notifications:', error);
+          }
+
           console.log(`🎮 Multiplayer game started in room: ${roomId}`);
         } else {
           try {
@@ -561,6 +627,24 @@ const setupSocketIO = (server) => {
           gameState: game.gameState
         });
 
+        // Send "Your Turn" notification to the next player (if game is still ongoing)
+        if (game.gameState === 'playing') {
+          try {
+            await firebaseNotificationService.sendToUser(
+              game.currentTurn,
+              'Your Turn! 🎲',
+              'It\'s your turn to make a guess!',
+              {
+                type: 'your_turn',
+                roomId,
+                gameMode: game.gameMode
+              }
+            );
+          } catch (error) {
+            console.error('Error sending turn notification:', error);
+          }
+        }
+
         if (game.gameState === 'finished') {
           io.to(roomId).emit('gameEnded', {
             roomId,
@@ -568,6 +652,42 @@ const setupSocketIO = (server) => {
             winnerUsername: socket.user.username,
             game: game.toObject()
           });
+
+          // Send game result notifications
+          try {
+            const winner = await User.findById(socket.userId).select('username');
+            const loser = await User.findById(game.players.find(p => p !== socket.userId)).select('username');
+            
+            if (winner && loser) {
+              // Send victory notification to winner
+              await firebaseNotificationService.sendToUser(
+                socket.userId,
+                'Victory! 🏆',
+                `Congratulations! You beat ${loser.username}!`,
+                {
+                  type: 'game_result',
+                  roomId,
+                  won: true,
+                  opponentName: loser.username
+                }
+              );
+
+              // Send defeat notification to loser
+              await firebaseNotificationService.sendToUser(
+                game.players.find(p => p !== socket.userId),
+                'Game Over 💔',
+                `Better luck next time! ${winner.username} won the game.`,
+                {
+                  type: 'game_result',
+                  roomId,
+                  won: false,
+                  opponentName: winner.username
+                }
+              );
+            }
+          } catch (error) {
+            console.error('Error sending game result notifications:', error);
+          }
         }
 
         callback({ success: true, feedback });
@@ -1092,6 +1212,45 @@ const createMatch = async (player1Id, player2Id, gameMode, matchType) => {
       player2Socket.join(roomId);
     }
 
+    // Send push notifications to both players
+    try {
+      const [player1, player2] = await Promise.all([
+        User.findById(player1Id).select('username'),
+        User.findById(player2Id).select('username')
+      ]);
+
+      if (player1 && player2) {
+        // Send individual notifications with correct opponent names
+        await firebaseNotificationService.sendToUser(
+          player1Id,
+          'Match Found! 🎯',
+          `You've been matched with ${player2.username}. Tap to join!`,
+          {
+            type: 'match_found',
+            roomId,
+            matchType,
+            gameMode,
+            opponentName: player2.username
+          }
+        );
+
+        await firebaseNotificationService.sendToUser(
+          player2Id,
+          'Match Found! 🎯',
+          `You've been matched with ${player1.username}. Tap to join!`,
+          {
+            type: 'match_found',
+            roomId,
+            matchType,
+            gameMode,
+            opponentName: player1.username
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Error sending match found notifications:', error);
+    }
+
     console.log(`🎯 Match created: ${roomId} (${matchType}) - ${player1Id} vs ${player2Id}`);
   } catch (error) {
     console.error('Error creating match:', error);
@@ -1173,6 +1332,27 @@ const handlePlayerDisconnect = async (roomId, userId) => {
         roomId,
         gameState: game.gameState
       });
+
+      // Send push notification to remaining players
+      try {
+        const disconnectedUser = await User.findById(userId).select('username');
+        if (disconnectedUser) {
+          await firebaseNotificationService.sendToUsers(
+            game.players,
+            'Player Disconnected 📡',
+            `${disconnectedUser.username} has left the game`,
+            {
+              type: 'player_disconnected',
+              roomId,
+              playerName: disconnectedUser.username,
+              playerId: userId,
+              gameState: game.gameState
+            }
+          );
+        }
+      } catch (error) {
+        console.error('Error sending player disconnected notification:', error);
+      }
     }
   } catch (error) {
     console.error('Error in handlePlayerDisconnect:', error);

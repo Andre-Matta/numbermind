@@ -30,19 +30,11 @@ const testFirebaseConfig = async () => {
     
     console.log('✅ Firebase messaging initialized successfully');
     
-    // Check if using environment variables or JSON file
+    // Check if using environment variables
     if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY) {
       console.log('🔧 Using Firebase service account from environment variables');
     } else {
-      const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || 
-        path.join(__dirname, '../firebase-service-account.json');
-      
-      const fs = require('fs');
-      if (fs.existsSync(serviceAccountPath)) {
-        console.log('📁 Using service account JSON file (fallback)');
-      } else {
-        console.log('⚠️ No Firebase configuration found');
-      }
+      console.log('⚠️ Firebase environment variables not found');
     }
     
     return true;

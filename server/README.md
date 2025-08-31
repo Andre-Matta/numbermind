@@ -134,11 +134,11 @@ scripts\setup-and-test.ps1
 ### **Troubleshooting**
 See `scripts/TROUBLESHOOTING.md` for detailed troubleshooting guide.
 
-### **Firebase Configuration (Recommended)**
+### **Firebase Configuration**
 
-Firebase is used for push notifications. The system prioritizes environment variables over the service account JSON file.
+Firebase is used for push notifications. The system uses environment variables from your `.env` file.
 
-#### **Method 1: Environment Variables (Recommended)**
+#### **Required Environment Variables**
 ```env
 # Firebase Configuration
 FIREBASE_PROJECT_ID=your-project-id
@@ -149,20 +149,29 @@ FIREBASE_CLIENT_ID=your-client-id
 FIREBASE_CLIENT_CERT_URL=https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-xxxxx%40your-project.iam.gserviceaccount.com
 ```
 
-#### **Method 2: Service Account File (Fallback)**
-Place your `firebase-service-account.json` file in the server directory.
-
 #### **Verification Scripts**
 ```bash
-# Verify environment variables
-npm run verify-env
-
 # Debug Firebase configuration
 npm run debug-firebase
 
 # Test Firebase functionality
 npm run test-firebase
+
+# Test multiplayer notifications
+npm run test-notifications
 ```
+
+#### **Multiplayer Game Notifications**
+
+The system automatically sends push notifications for key multiplayer game events:
+
+- **Player Joined** - Host gets notified when someone joins their room
+- **Room Ready** - Both players get notified when the room is full and ready
+- **Game Started** - Both players get notified when the game begins
+- **Your Turn** - Player gets notified when it's their turn to guess
+- **Game Result** - Winner and loser get appropriate victory/defeat notifications
+- **Player Disconnected** - Remaining players get notified when someone leaves
+- **Match Found** - Players get notified when matchmaking finds an opponent
 
 ### **Other Optional Variables**
 ```env
