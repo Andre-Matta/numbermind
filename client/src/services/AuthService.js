@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import config from '../config/config';
+import NotificationService from './NotificationService';
 
 class AuthService {
   constructor() {
@@ -18,12 +19,28 @@ class AuthService {
         this.token = token;
         this.user = JSON.parse(userData);
         this.isAuthenticated = true;
+        
+        // Register FCM token after initialization if user is authenticated
+        await this.registerFcmTokenIfNeeded();
+        
         return true;
       }
       return false;
     } catch (error) {
       console.error('Error initializing auth:', error);
       return false;
+    }
+  }
+
+  // Register FCM token if needed
+  async registerFcmTokenIfNeeded() {
+    try {
+      if (this.isAuthenticated) {
+        console.log('🔄 Registering FCM token after authentication...');
+        await NotificationService.registerTokenWithServer();
+      }
+    } catch (error) {
+      console.error('Error registering FCM token:', error);
     }
   }
 
@@ -56,6 +73,10 @@ class AuthService {
 
       if (data.success) {
         await this.setAuthData(data.token, data.user);
+        
+        // Register FCM token after successful registration
+        await this.registerFcmTokenIfNeeded();
+        
         return { success: true, data };
       } else {
         return { success: false, error: data.message || 'Registration failed' };
@@ -107,6 +128,10 @@ class AuthService {
 
       if (data.success) {
         await this.setAuthData(data.token, data.user);
+        
+        // Register FCM token after successful login
+        await this.registerFcmTokenIfNeeded();
+        
         return { success: true, data };
       } else {
         return { success: false, error: data.message || 'Login failed' };

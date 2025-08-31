@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import config from '../config/config';
 import firebaseConfig from '../config/firebase';
+import messaging from '@react-native-firebase/messaging';
 
 class FirebaseNotificationService {
   constructor() {
@@ -18,18 +19,6 @@ class FirebaseNotificationService {
     try {
       console.log('🔥 Initializing Firebase notification service...');
 
-      // Check if Firebase is available
-      if (!global.firebase) {
-        console.log('⚠️ Firebase not available, using fallback notification system');
-        return this.initializeFallback();
-      }
-
-      // Initialize Firebase if not already initialized
-      if (!global.firebase.apps.length) {
-        global.firebase.initializeApp(firebaseConfig.firebaseConfig);
-        console.log('✅ Firebase initialized');
-      }
-
       // Request notification permissions
       const hasPermission = await this.requestPermissions();
       if (!hasPermission) {
@@ -42,6 +31,9 @@ class FirebaseNotificationService {
 
       // Set up notification listeners
       this.setupNotificationListeners();
+
+      // Set up background message handler
+      this.setupBackgroundHandler();
 
       // Set up token refresh
       this.setupTokenRefresh();
@@ -80,8 +72,12 @@ class FirebaseNotificationService {
   async requestPermissions() {
     try {
       if (Platform.OS === 'ios') {
-        const { status } = await global.firebase.messaging().requestPermission();
-        return status === 'authorized';
+        const authStatus = await messaging().requestPermission();
+        const enabled =
+          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+          authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+        return enabled;
       } else {
         // Android permissions are handled by the app manifest
         return true;
@@ -107,12 +103,7 @@ class FirebaseNotificationService {
   // Get FCM token
   async getFcmToken() {
     try {
-      if (!global.firebase) {
-        console.log('⚠️ Firebase not available, cannot get FCM token');
-        return null;
-      }
-
-      const token = await global.firebase.messaging().getToken();
+      const token = await messaging().getToken();
       this.fcmToken = token;
       
       // Save token to storage
@@ -128,24 +119,19 @@ class FirebaseNotificationService {
 
   // Set up notification listeners
   setupNotificationListeners() {
-    if (!global.firebase) {
-      console.log('⚠️ Firebase not available, cannot set up listeners');
-      return;
-    }
-
     try {
       // Listen for token refresh
-      const tokenRefreshListener = global.firebase.messaging().onTokenRefresh(() => {
+      const tokenRefreshListener = messaging().onTokenRefresh(() => {
         this.handleTokenRefresh();
       });
 
       // Listen for foreground messages
-      const foregroundListener = global.firebase.messaging().onMessage((message) => {
+      const foregroundListener = messaging().onMessage((message) => {
         this.handleForegroundMessage(message);
       });
 
       // Listen for background/quit state messages
-      global.firebase.messaging().setBackgroundMessageHandler((message) => {
+      messaging().setBackgroundMessageHandler((message) => {
         this.handleBackgroundMessage(message);
       });
 
@@ -178,9 +164,7 @@ class FirebaseNotificationService {
   // Refresh token manually
   async refreshToken() {
     try {
-      if (!global.firebase) return;
-      
-      await global.firebase.messaging().deleteToken();
+      await messaging().deleteToken();
       await this.getFcmToken();
       await this.registerTokenWithServer();
     } catch (error) {
@@ -209,6 +193,14 @@ class FirebaseNotificationService {
     
     // Handle message based on type
     this.handleMessageByType(data);
+  }
+
+  // Set up background message handler (call this in your app's entry point)
+  setupBackgroundHandler() {
+    messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+      console.log('📱 Background message received:', remoteMessage);
+      this.handleBackgroundMessage(remoteMessage);
+    });
   }
 
   // Handle message based on type
@@ -311,17 +303,25 @@ class FirebaseNotificationService {
         return false;
       }
 
+      const requestBody = {
+        fcmToken: token,
+        platform: Platform.OS,
+        deviceId: await this.getDeviceId(),
+      };
+
+      console.log('📤 Sending FCM registration request:', {
+        url: `${config.API_BASE_URL}/notifications/register`,
+        body: requestBody,
+        authToken: authToken ? 'Present' : 'Missing'
+      });
+
       const response = await fetch(`${config.API_BASE_URL}/notifications/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`,
         },
-        body: JSON.stringify({
-          fcmToken: token,
-          platform: Platform.OS,
-          deviceId: await this.getDeviceId(),
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {

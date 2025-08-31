@@ -23,6 +23,7 @@ import NotificationService from './src/services/NotificationService';
 import NotificationCenter from './src/components/NotificationCenter';
 import NotificationTester from './src/components/NotificationTester';
 import FirebaseTest from './src/components/FirebaseTest';
+import FCMTokenTester from './src/components/FCMTokenTester';
 import EdgeGestureBlocker from './src/components/EdgeGestureBlocker';
 import FriendsScreenSimple from './src/screens/FriendsScreenSimple';
 import { initializeFirebase, cleanupFirebase } from './src/utils/firebaseInit';
@@ -177,7 +178,7 @@ function AppContent() {
   };
 
   const handleShowFirebaseTest = () => {
-    setCurrentScreen('firebaseTest');
+    setCurrentScreen('fcmTokenTester');
   };
 
   const handleShowFriends = () => {
@@ -355,9 +356,9 @@ function AppContent() {
               onClose={handleBackToMenu}
             />
           );
-        case 'firebaseTest':
+        case 'fcmTokenTester':
           return (
-            <FirebaseTest
+            <FCMTokenTester
               onClose={handleBackToMenu}
             />
           );
