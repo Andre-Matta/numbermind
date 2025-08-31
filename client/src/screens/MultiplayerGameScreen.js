@@ -114,10 +114,11 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     if (NetworkService.roomId === roomId) {
       console.log('🔄 Game already in progress, checking state...');
       // Check if both players have submitted their numbers
-      // For now, assume we need to set up the game
-      setGameState('setup');
+      // Start in waiting state and let room events determine the proper state
+      setGameState('waiting');
     } else {
       console.log('🆕 New game setup');
+      setGameState('waiting');
     }
     
     // Set up typing listener after a short delay to ensure connection is ready
