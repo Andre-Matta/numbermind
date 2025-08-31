@@ -122,6 +122,11 @@ class NetworkService {
           if (this.onPlayerTyping) this.onPlayerTyping(data);
         });
 
+        this.socket.on('roomReady', (data) => {
+          console.log('Room ready event received:', data);
+          if (this.onRoomReady) this.onRoomReady(data);
+        });
+
         // Set connection timeout
         setTimeout(() => {
           if (this.isConnecting) {

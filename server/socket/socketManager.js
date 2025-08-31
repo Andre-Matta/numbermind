@@ -184,6 +184,18 @@ const setupSocketIO = (server) => {
         });
 
         console.log(`👥 Player joined room: ${socket.user.username} -> ${roomId}`);
+
+        // Check if room is now full (2 players) and notify
+        if (game.players.length === 2) {
+          console.log(`🎮 Room ${roomId} is now full with 2 players. Ready for setup phase.`);
+          
+          // Notify all players that the room is full and ready for setup
+          io.to(roomId).emit('roomReady', {
+            roomId,
+            players: game.players,
+            message: 'Room is full! Both players can now set up their secret numbers.'
+          });
+        }
       } catch (error) {
         console.error('Error joining room:', error);
         if (typeof callback === 'function') {

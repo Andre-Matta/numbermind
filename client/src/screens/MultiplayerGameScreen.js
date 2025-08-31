@@ -106,6 +106,7 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     NetworkService.onPlayerJoined = handlePlayerJoined;
     NetworkService.onPlayerLeft = handlePlayerLeft;
     NetworkService.onDisconnect = handleDisconnection;
+    NetworkService.onRoomReady = handleRoomReady;
     
     console.log('✅ Event listeners set up');
     
@@ -129,12 +130,22 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     console.log('👥 Player joined event received:', data);
     console.log('🔍 Current roomId:', roomId, 'Event roomId:', data.roomId);
     if (data.roomId === roomId) {
-      console.log('✅ Player joined our room, transitioning to setup state');
-      // Second player joined, transition to setup state
-      setGameState('setup');
-      Alert.alert('Player Joined!', 'Both players are now in the room. Enter your secret number to start the game.');
+      console.log('✅ Player joined our room');
+      Alert.alert('Player Joined!', 'Another player has joined the room.');
     } else {
       console.log('❌ Player joined different room, ignoring');
+    }
+  };
+
+  const handleRoomReady = (data) => {
+    console.log('🏠 Room ready event received:', data);
+    console.log('🔍 Current roomId:', roomId, 'Event roomId:', data.roomId);
+    if (data.roomId === roomId) {
+      console.log('✅ Room is ready, transitioning to setup state');
+      setGameState('setup');
+      Alert.alert('Room Ready!', 'Both players are now in the room. Enter your secret number to start the game.');
+    } else {
+      console.log('❌ Room ready for different room, ignoring');
     }
   };
 
