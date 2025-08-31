@@ -252,6 +252,7 @@ function AppContent() {
             onShowShop={handleShowShop}
             onShowNotifications={handleShowNotifications}
             onShowNotificationTester={handleShowNotificationTester}
+            onShowFirebaseTest={handleShowFirebaseTest}
             onShowFriends={handleShowFriends}
             onShowRules={() => setShowRules(true)}
           />
@@ -395,6 +396,7 @@ function AppContent() {
             onShowShop={handleShowShop}
             onShowNotifications={handleShowNotifications}
             onShowNotificationTester={handleShowNotificationTester}
+            onShowFirebaseTest={handleShowFirebaseTest}
             onShowFriends={handleShowFriends}
             onShowRules={() => setShowRules(true)}
           />

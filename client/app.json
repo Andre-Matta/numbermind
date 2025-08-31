@@ -37,14 +37,18 @@
       "windowSoftInputMode": "adjustResize",
       "navigationBarColor": "#1a1a2e",
       "statusBarBackgroundColor": "#1a1a2e",
-      "allowBackup": false
+      "allowBackup": false,
+      "googleServicesFile": "./android/app/google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       [
-        "@react-native-firebase/app"
+        "@react-native-firebase/app",
+        {
+          "googleServicesFile": "./android/app/google-services.json"
+        }
       ],
       [
         "@react-native-firebase/messaging"
