@@ -1,7 +1,7 @@
 // Test script to check multiplayer connection and authentication
-import config from './src/config/config.js';
-import AuthService from './src/services/AuthService.js';
-import NetworkService from './src/services/NetworkService.js';
+import config from '../src/config/config.js';
+import AuthService from '../src/services/AuthService.js';
+import NetworkService from '../src/services/NetworkService.js';
 
 async function testMultiplayerConnection() {
   console.log('🧪 Testing multiplayer connection...');
