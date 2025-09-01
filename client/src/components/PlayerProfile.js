@@ -21,7 +21,7 @@ import {
 } from '../utils/responsiveUtils';
 
 
-export default function PlayerProfile({ visible, onClose, user }) {
+export default function PlayerProfile({ visible, onClose, user, onShowRules }) {
   const { logout } = useAuth();
 
   const getRankColor = (rank) => {
@@ -64,6 +64,9 @@ export default function PlayerProfile({ visible, onClose, user }) {
           <View style={styles.header}>
             <Heading2>Player Profile</Heading2>
             <View style={styles.headerActions}>
+              <TouchableOpacity style={styles.howToPlayButton} onPress={onShowRules}>
+                <Ionicons name="information-circle" size={getResponsiveFontSize(18)} color="#4CAF50" />
+              </TouchableOpacity>
               <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                 <Ionicons name="log-out-outline" size={getResponsiveFontSize(20)} color="#f44336" />
               </TouchableOpacity>
@@ -159,6 +162,9 @@ const styles = StyleSheet.create({
     padding: scale(5),
   },
   logoutButton: {
+    padding: scale(5),
+  },
+  howToPlayButton: {
     padding: scale(5),
   },
   profileSection: {

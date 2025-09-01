@@ -213,92 +213,58 @@ export default function EnhancedMainMenu({
             </View>
           </View>
 
-          {/* Quick Actions */}
-          <View style={styles.quickActions}>
-            <TouchableOpacity style={styles.quickActionButton} onPress={handleShowLeaderboard}>
-              <Ionicons name="trophy" size={24} color="#fff" />
-              <Text style={styles.quickActionText}>Leaderboard</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.quickActionButton} onPress={handleShowShop}>
-              <Ionicons name="wallet-outline" size={24} color="#fff" />
-              <Text style={styles.quickActionText}>Shop</Text>
-            </TouchableOpacity>
-          </View>
 
-          {/* Main Game Options */}
-          <View style={styles.gameOptions}>
-            <TouchableOpacity
-              style={[styles.gameButton, styles.localButton]}
-              onPress={handleLocalGame}
-              activeOpacity={0.8}
-            >
-              <View style={styles.buttonContent}>
-                <Ionicons name="phone-portrait" size={32} color="#fff" />
-                <Text style={styles.buttonText}>Local Game</Text>
-                <Text style={styles.buttonSubtext}>Play on the same device</Text>
-              </View>
-            </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.gameButton, styles.multiplayerButton]}
-              onPress={handleMultiplayer}
-              activeOpacity={0.8}
-            >
-              <View style={styles.buttonContent}>
-                <Ionicons name="wifi" size={32} color="#fff" />
-                <Text style={styles.buttonText}>Multiplayer</Text>
-                <Text style={styles.buttonSubtext}>LAN or internet gaming</Text>
-              </View>
-            </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.gameButton, styles.rankedButton]}
-              onPress={handleRankedLobby}
-              activeOpacity={0.8}
-            >
-              <View style={styles.buttonContent}>
-                <Ionicons name="star" size={32} color="#fff" />
-                <Text style={styles.buttonText}>Ranked Lobby</Text>
-                <Text style={styles.buttonSubtext}>Competitive matchmaking</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
 
-          {/* Recent Activity */}
-          <View style={styles.recentActivity}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
-            <View style={styles.activityItem}>
-              <View style={styles.activityIcon}>
-                <Ionicons name="trophy" size={20} color="#ffd700" />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityText}>Won against Player456</Text>
-                <Text style={styles.activityTime}>2 hours ago</Text>
-              </View>
-              <Text style={styles.activityReward}>+50 XP</Text>
-            </View>
-            
-            <View style={styles.activityItem}>
-              <View style={styles.activityIcon}>
-                <Ionicons name="star" size={20} color="#ff6b6b" />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityText}>Lost to MasterCoder</Text>
-                <Text style={styles.activityTime}>1 day ago</Text>
-              </View>
-              <Text style={styles.activityReward}>+25 XP</Text>
-            </View>
-          </View>
 
-          {/* Footer */}
-          <View style={styles.footer}>
-            <TouchableOpacity style={styles.rulesButton} onPress={handleShowRules}>
-              <Ionicons name="information-circle" size={24} color="#fff" />
-              <Text style={styles.rulesText}>How to Play</Text>
-            </TouchableOpacity>
-          </View>
+
         </ScrollView>
+        
+        {/* Bottom Bar - Fixed at bottom */}
+        <View style={styles.bottomBar}>
+          {/* Left side - Multiplayer and Leaderboard */}
+          <View style={styles.bottomLeftSection}>
+            <TouchableOpacity style={styles.bottomButton} onPress={handleMultiplayer} activeOpacity={0.8}>
+              <View style={styles.bottomButtonContent}>
+                <Ionicons name="wifi" size={20} color="#fff" />
+                <Text style={styles.bottomButtonText}>Multiplayer</Text>
+              </View>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.bottomButton} onPress={handleShowLeaderboard} activeOpacity={0.8}>
+              <View style={styles.bottomButtonContent}>
+                <Ionicons name="trophy" size={20} color="#fff" />
+                <Text style={styles.bottomButtonText}>Leaderboard</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Center - Ranked Lobby */}
+          <TouchableOpacity style={styles.centerButton} onPress={handleRankedLobby} activeOpacity={0.8}>
+            <View style={styles.centerButtonContent}>
+              <Ionicons name="star" size={24} color="#fff" />
+              <Text style={styles.centerButtonText}>Ranked Lobby</Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Right side - Local Game and Shop */}
+          <View style={styles.bottomRightSection}>
+            <TouchableOpacity style={styles.bottomButton} onPress={handleLocalGame} activeOpacity={0.8}>
+              <View style={styles.bottomButtonContent}>
+                <Ionicons name="phone-portrait" size={20} color="#fff" />
+                <Text style={styles.bottomButtonText}>Local Game</Text>
+              </View>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.bottomButton} onPress={handleShowShop} activeOpacity={0.8}>
+              <View style={styles.bottomButtonContent}>
+                <Ionicons name="wallet-outline" size={20} color="#fff" />
+                <Text style={styles.bottomButtonText}>Shop</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
       </LinearGradient>
     </View>
   );
@@ -313,6 +279,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flex: 1,
+    paddingBottom: 80, // Account for fixed bottom bar
   },
   topBar: {
     flexDirection: 'row',
@@ -472,131 +439,75 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  quickActions: {
+
+
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: 20,
-    marginBottom: 30,
-  },
-  quickActionButton: {
+    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 15,
-    minWidth: 80,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    zIndex: 1000,
   },
-  quickActionText: {
+  bottomLeftSection: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  bottomRightSection: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  bottomButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.md,
+    minWidth: scale(70),
+    minHeight: scale(50),
+    alignItems: 'center',
+  },
+  bottomButtonContent: {
+    alignItems: 'center',
+  },
+  bottomButtonText: {
     color: '#fff',
-    fontSize: 12,
-    marginTop: 8,
+    fontSize: getResponsiveFontSize(10),
+    fontWeight: '600',
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  centerButton: {
+    backgroundColor: '#ff6b6b',
+    borderRadius: borderRadius.lg,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    minWidth: scale(105),
+    minHeight: scale(60),
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  centerButtonContent: {
+    alignItems: 'center',
+  },
+  centerButtonText: {
+    color: '#fff',
+    fontSize: getResponsiveFontSize(12),
+    fontWeight: 'bold',
+    marginTop: 4,
     textAlign: 'center',
   },
 
-  gameOptions: {
-    paddingHorizontal: 20,
-    paddingRight: 80, // Account for smaller right sidebar
-    marginBottom: 30,
-    gap: 20,
-  },
-  gameButton: {
-    borderRadius: 20,
-    padding: 25,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  localButton: {
-    backgroundColor: '#28a745',
-  },
-  multiplayerButton: {
-    backgroundColor: '#007bff',
-  },
-  rankedButton: {
-    backgroundColor: '#ff6b6b',
-  },
-  buttonContent: {
-    alignItems: 'center',
-  },
-  buttonText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginTop: 15,
-    marginBottom: 8,
-  },
-  buttonSubtext: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-  },
-  recentActivity: {
-    paddingHorizontal: 20,
-    marginBottom: 30,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  activityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 15,
-    borderRadius: 15,
-    marginBottom: 10,
-  },
-  activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  activityContent: {
-    flex: 1,
-  },
-  activityText: {
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: '600',
-    marginBottom: 5,
-  },
-  activityTime: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.7)',
-  },
-  activityReward: {
-    fontSize: 14,
-    color: '#4ecdc4',
-    fontWeight: 'bold',
-  },
-  footer: {
-    alignItems: 'center',
-    paddingBottom: 30,
-  },
-  rulesButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 25,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    minWidth: 140,
-    justifyContent: 'center',
-  },
-  rulesText: {
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: '700',
-    marginLeft: 8,
-    textAlign: 'center',
-  },
 });

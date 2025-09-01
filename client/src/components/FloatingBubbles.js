@@ -77,7 +77,7 @@ const FloatingBubbles = () => {
         );
         
         // Add new bubbles to maintain count
-        while (newBubbles.length < 8) {
+        while (newBubbles.length < 20) {
           newBubbles.push(createNewBubble());
         }
         

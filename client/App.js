@@ -393,6 +393,7 @@ function AppContent() {
           visible={showProfile}
           onClose={() => setShowProfile(false)}
           user={user}
+          onShowRules={() => setShowRules(true)}
         />
       </SafeAreaView>
     </EdgeGestureBlocker>
