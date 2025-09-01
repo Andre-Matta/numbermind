@@ -534,19 +534,7 @@ class NetworkService {
     this.availableRooms = []; // Reset available rooms
   }
 
-  // Get local IP address for LAN discovery
-  async getLocalIP() {
-    try {
-      const state = await NetInfo.fetch();
-      if (state.type === 'wifi' && state.details) {
-        return state.details.ipAddress;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error getting local IP:', error);
-      return null;
-    }
-  }
+
 
   // Check if connected to server
   isConnected() {

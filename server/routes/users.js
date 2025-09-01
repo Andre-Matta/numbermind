@@ -1,12 +1,14 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const User = require('../models/User');
 const { verifyToken } = require('../utils/jwtUtils');
+const User = require('../models/User');
 
 const router = express.Router();
 
 // Apply authentication middleware to all routes
 router.use(verifyToken);
+
+// #region Profile Routes
 
 // @route   GET /api/users/profile
 // @desc    Get user profile
@@ -15,7 +17,8 @@ router.get('/profile', async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
       .select('-password')
-      .populate('friends', 'username avatar gameStats.rating gameStats.rank');
+      .populate('friends', 'username avatar gameStats.rating gameStats.rank')
+      .populate('inbox.from', 'username avatar');
 
     if (!user) {
       return res.status(404).json({
@@ -117,6 +120,38 @@ router.put('/profile', [
     });
   }
 });
+
+// @route   GET /api/users/stats
+// @desc    Get user's game statistics
+// @access  Private
+router.get('/stats', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id)
+      .select('gameStats');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      stats: user.gameStats
+    });
+  } catch (error) {
+    console.error('Get stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching statistics'
+    });
+  }
+});
+
+// #endregion
+
+// #region Leaderboard Routes
 
 // @route   GET /api/users/leaderboard
 // @desc    Get global leaderboard
@@ -223,6 +258,10 @@ router.get('/leaderboard', async (req, res) => {
     });
   }
 });
+
+// #endregion
+
+// #region Friend Management Routes
 
 // @route   GET /api/users/search
 // @desc    Search users by username
@@ -505,32 +544,102 @@ router.get('/friend-requests', async (req, res) => {
   }
 });
 
-// @route   GET /api/users/stats
-// @desc    Get user's game statistics
-// @access  Private
-router.get('/stats', async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id)
-      .select('gameStats');
+// #endregion
 
+// #region Inbox Routes
+
+// @route   PUT /api/users/inbox/:messageId/read
+// @desc    Mark a message as read
+// @access  Private
+router.put('/inbox/:messageId/read', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+      return res.status(404).json({ message: 'User not found' });
     }
+
+    const message = user.inbox.id(req.params.messageId);
+    
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+
+    message.isRead = true;
+    message.readAt = new Date();
+    
+    await user.save();
 
     res.json({
       success: true,
-      stats: user.gameStats
+      message: 'Message marked as read'
     });
   } catch (error) {
-    console.error('Get stats error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while fetching statistics'
-    });
+    console.error('Error marking message as read:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
+
+// @route   PUT /api/users/inbox/read-all
+// @desc    Mark all messages as read
+// @access  Private
+router.put('/inbox/read-all', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.inbox.forEach(message => {
+      if (!message.isRead) {
+        message.isRead = true;
+        message.readAt = new Date();
+      }
+    });
+    
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'All messages marked as read'
+    });
+  } catch (error) {
+    console.error('Error marking all messages as read:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   DELETE /api/users/inbox/:messageId
+// @desc    Delete a message
+// @access  Private
+router.delete('/inbox/:messageId', async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const message = user.inbox.id(req.params.messageId);
+    
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+
+    message.remove();
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Message deleted'
+    });
+  } catch (error) {
+    console.error('Error deleting message:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// #endregion
 
 module.exports = router;

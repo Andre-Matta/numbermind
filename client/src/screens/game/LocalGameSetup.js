@@ -11,9 +11,9 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import config from '../config/config';
-import AuthService from '../services/AuthService';
-import { useData } from '../context/DataContext';
+import config from '../../config/config';
+import AuthService from '../../services/AuthService';
+import { useData } from '../../context/DataContext';
 
 const { width } = Dimensions.get('window');
 

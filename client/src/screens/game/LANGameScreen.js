@@ -15,12 +15,12 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import OfflineLANService from '../services/OfflineLANService';
-import { useData } from '../context/DataContext';
+import OfflineLANService from '../../services/OfflineLANService';
+import { useData } from '../../context/DataContext';
 
 const { width, height } = Dimensions.get('window');
 
-export default function OfflineLANGameScreen({ roomId, onBack, onGameEnd }) {
+export default function LANGameScreen({ roomId, onBack, onGameEnd }) {
   const { userSkins } = useData();
   const [gameState, setGameState] = useState('waiting'); // waiting, setup, playing, finished
   const [currentGuess, setCurrentGuess] = useState(['', '', '', '', '']);

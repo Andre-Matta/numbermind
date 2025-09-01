@@ -10,11 +10,11 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import config from '../config/config';
-import AuthService from '../services/AuthService';
+import config from '../../config/config';
+import AuthService from '../../services/AuthService';
 
 
-export default function Leaderboard({ onBack }) {
+export default function LeaderboardScreen({ onBack }) {
   const [topPlayers, setTopPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

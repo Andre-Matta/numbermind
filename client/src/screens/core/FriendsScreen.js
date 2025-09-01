@@ -10,11 +10,11 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
-import FriendsList from '../components/FriendsList';
-import FriendRequests from '../components/FriendRequests';
-import UserSearch from '../components/UserSearch';
-import { ResponsiveWrapper } from '../components/ResponsiveWrapper';
-import FriendsService from '../services/FriendsService';
+import FriendsList from '../../components/FriendsList';
+import FriendRequests from '../../components/FriendRequests';
+import UserSearch from '../../components/UserSearch';
+import { ResponsiveWrapper } from '../../components/ResponsiveWrapper';
+import FriendsService from '../../services/FriendsService';
 
 /**
  * FriendsScreen - Main screen for the friend system (without TabView)

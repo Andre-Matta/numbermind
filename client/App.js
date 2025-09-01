@@ -4,33 +4,37 @@ import { SafeAreaView, StyleSheet, BackHandler } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { DataProvider, useData } from './src/context/DataContext';
-import LoadingScreen from './src/screens/LoadingScreen';
-import EnhancedMainMenu from './src/screens/EnhancedMainMenu';
-import LocalGameScreen from './src/screens/LocalGameScreen';
-import MultiplayerSelectionScreen from './src/screens/MultiplayerSelectionScreen';
-import LANLobby from './src/screens/LANLobby';
-import MultiplayerLobby from './src/screens/MultiplayerLobby';
-import MultiplayerGameScreen from './src/screens/MultiplayerGameScreen';
-import OfflineLANGameScreen from './src/screens/OfflineLANGameScreen';
-import LocalGameSetup from './src/components/LocalGameSetup';
-import GameRules from './src/components/GameRules';
-import RankedLobby from './src/components/RankedLobby';
+
+//core imports
+import LoadingScreen from './src/screens/core/LoadingScreen';
+import LoginScreen from './src/screens/core/LoginScreen';
+import EnhancedMainMenu from './src/screens/core/EnhancedMainMenu';
+import MultiplayerSelectionScreen from './src/screens/core/MultiplayerSelectionScreen';
+import Shop from './src/screens/core/ShopScreen';
+import Leaderboard from './src/screens/core/LeaderboardScreen';
+import FriendsScreen from './src/screens/core/FriendsScreen';
 import PlayerProfile from './src/components/PlayerProfile';
-import Leaderboard from './src/components/Leaderboard';
-import Shop from './src/screens/ShopScreen';
-import LoginScreen from './src/screens/LoginScreen';
-import NotificationService from './src/services/NotificationService';
-import NotificationCenter from './src/components/NotificationCenter';
-import NotificationTester from './src/components/NotificationTester';
-import FirebaseTest from './src/components/FirebaseTest';
-import FCMTokenTester from './src/components/FCMTokenTester';
+import GameRules from './src/components/GameRules';
+
+//game imports
+import LocalGameSetup from './src/screens/game/LocalGameSetup';
+import LocalGameScreen from './src/screens/game/LocalGameScreen';
+import LANLobby from './src/screens/game/LANLobby';
+import LANGameScreen from './src/screens/game/LANGameScreen';
+import MultiplayerLobby from './src/screens/game/MultiplayerLobby';
+import MultiplayerGameScreen from './src/screens/game/MultiplayerGameScreen';
+import RankedLobby from './src/screens/game/RankedLobby';
+
+import Inbox from './src/components/Inbox';
+
 import EdgeGestureBlocker from './src/components/EdgeGestureBlocker';
-import FriendsScreenSimple from './src/screens/FriendsScreenSimple';
 import { initializeFirebase, cleanupFirebase } from './src/utils/firebaseInit';
 
 function AppContent() {
   const [currentScreen, setCurrentScreen] = useState('loading');
   const [showRules, setShowRules] = useState(false);
+  const [showInbox, setShowInbox] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [gameData, setGameData] = useState(null);
   const [multiplayerRoomId, setMultiplayerRoomId] = useState(null);
   const [multiplayerType, setMultiplayerType] = useState(null); // 'lan' or 'internet'
@@ -158,7 +162,7 @@ function AppContent() {
   };
 
   const handleShowProfile = () => {
-    setCurrentScreen('profile');
+    setShowProfile(true);
   };
 
   const handleShowLeaderboard = () => {
@@ -169,17 +173,11 @@ function AppContent() {
     setCurrentScreen('shop');
   };
 
-  const handleShowNotifications = () => {
-    setCurrentScreen('notifications');
+  const handleShowInbox = () => {
+    setShowInbox(true);
   };
 
-  const handleShowNotificationTester = () => {
-    setCurrentScreen('notificationTester');
-  };
 
-  const handleShowFirebaseTest = () => {
-    setCurrentScreen('fcmTokenTester');
-  };
 
   const handleShowFriends = () => {
     setCurrentScreen('friends');
@@ -190,13 +188,9 @@ function AppContent() {
     switch (currentScreen) {
       case 'local':
       case 'localSetup':
-      case 'profile':
       case 'leaderboard':
       case 'shop':
       case 'ranked':
-      case 'notifications':
-      case 'notificationTester':
-      case 'firebaseTest':
       case 'friends':
         setCurrentScreen('menu');
         break;
@@ -251,9 +245,8 @@ function AppContent() {
             onShowProfile={handleShowProfile}
             onShowLeaderboard={handleShowLeaderboard}
             onShowShop={handleShowShop}
-            onShowNotifications={handleShowNotifications}
-            onShowNotificationTester={handleShowNotificationTester}
-            onShowFirebaseTest={handleShowFirebaseTest}
+            onShowInbox={handleShowInbox}
+
             onShowFriends={handleShowFriends}
             onShowRules={() => setShowRules(true)}
           />
@@ -299,7 +292,7 @@ function AppContent() {
         // Use different game screens based on multiplayer type
         if (multiplayerType === 'lan') {
           return (
-            <OfflineLANGameScreen
+            <LANGameScreen
               roomId={multiplayerRoomId}
               onBack={() => setCurrentScreen('lanMultiplayer')}
               onGameEnd={() => setCurrentScreen('lanMultiplayer')}
@@ -320,13 +313,7 @@ function AppContent() {
             onBack={handleBackToMenu}
           />
         );
-      case 'profile':
-        return (
-          <PlayerProfile
-            onBack={handleBackToMenu}
-            user={user}
-          />
-        );
+
       case 'leaderboard':
         return (
           <Leaderboard
@@ -339,32 +326,11 @@ function AppContent() {
             onBack={handleBackToMenu}
           />
         );
-              case 'notifications':
-          return (
-            <NotificationCenter
-              onClose={handleBackToMenu}
-              onNotificationPress={(notification) => {
-                // Handle notification press - navigate based on type
-                console.log('Notification pressed:', notification);
-                handleBackToMenu();
-              }}
-            />
-          );
-        case 'notificationTester':
-          return (
-            <NotificationTester
-              onClose={handleBackToMenu}
-            />
-          );
-        case 'fcmTokenTester':
-          return (
-            <FCMTokenTester
-              onClose={handleBackToMenu}
-            />
-          );
+
+
         case 'friends':
           return (
-            <FriendsScreenSimple
+            <FriendsScreen
               navigation={{
                 navigate: (screenName, params) => {
                   // Handle navigation to other screens from friends
@@ -395,9 +361,8 @@ function AppContent() {
             onShowProfile={handleShowProfile}
             onShowLeaderboard={handleShowLeaderboard}
             onShowShop={handleShowShop}
-            onShowNotifications={handleShowNotifications}
-            onShowNotificationTester={handleShowNotificationTester}
-            onShowFirebaseTest={handleShowFirebaseTest}
+            onShowInbox={handleShowInbox}
+
             onShowFriends={handleShowFriends}
             onShowRules={() => setShowRules(true)}
           />
@@ -415,6 +380,20 @@ function AppContent() {
             onClose={() => setShowRules(false)}
           />
         )}
+        <Inbox
+          visible={showInbox}
+          onClose={() => setShowInbox(false)}
+          onMessagePress={(message) => {
+            // Handle message press - navigate based on type
+            console.log('Message pressed:', message);
+            setShowInbox(false);
+          }}
+        />
+        <PlayerProfile
+          visible={showProfile}
+          onClose={() => setShowProfile(false)}
+          user={user}
+        />
       </SafeAreaView>
     </EdgeGestureBlocker>
   );

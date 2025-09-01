@@ -211,6 +211,39 @@ const userSchema = new mongoose.Schema({
       type: Date,
       default: Date.now
     }
+  }],
+  
+  // Inbox Messages
+  inbox: [{
+    from: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    subject: {
+      type: String,
+      required: true,
+      maxlength: 100
+    },
+    message: {
+      type: String,
+      required: true,
+      maxlength: 1000
+    },
+    type: {
+      type: String,
+      enum: ['system', 'friend_request', 'game_invite', 'achievement', 'promotion', 'gift'],
+      default: 'system'
+    },
+    isRead: {
+      type: Boolean,
+      default: false
+    },
+    readAt: Date,
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
   }]
 }, {
   timestamps: true,

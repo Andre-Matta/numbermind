@@ -13,7 +13,7 @@ import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import OfflineLANService from '../services/OfflineLANService';
+import OfflineLANService from '../../services/OfflineLANService';
 
 export default function LANLobby({ onGameStart, onBack }) {
   const [connectionStatus, setConnectionStatus] = useState('connecting');

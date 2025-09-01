@@ -6,9 +6,9 @@ import {
   Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import config from '../config/config';
-import AuthService from '../services/AuthService';
-import { useData } from '../context/DataContext';
+import config from '../../config/config';
+import AuthService from '../../services/AuthService';
+import { useData } from '../../context/DataContext';
 import {
   scale,
   verticalScale,
@@ -20,7 +20,7 @@ import {
   spacing,
   borderRadius,
   getScreenDimensions
-} from '../utils/responsiveUtils';
+} from '../../utils/responsiveUtils';
 
 export default function LoadingScreen({ onLoadingComplete, onNavigateToLogin }) {
   const { setAppData } = useData();

@@ -6,16 +6,14 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
-  Image,
-  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import FloatingBubbles from '../components/FloatingBubbles';
-import { useAuth } from '../context/AuthContext';
-import NotificationBadge from '../components/NotificationBadge';
-import NotificationTester from '../components/NotificationTester';
+import FloatingBubbles from '../../components/FloatingBubbles';
+import { useAuth } from '../../context/AuthContext';
+import NotificationBadge from '../../components/NotificationBadge';
+
 import { 
   scale, 
   responsiveWidth, 
@@ -26,7 +24,7 @@ import {
   getResponsiveContainerWidth,
   spacing,
   borderRadius
-} from '../utils/responsiveUtils';
+} from '../../utils/responsiveUtils';
 
 const { width, height } = Dimensions.get('window');
 
@@ -38,9 +36,8 @@ export default function EnhancedMainMenu({
   onShowLeaderboard,
   onShowShop,
   onShowRankedLobby,
-  onShowNotifications,
-  onShowNotificationTester,
-  onShowFirebaseTest,
+  onShowInbox,
+
   onShowFriends
 }) {
   const { logout, user } = useAuth();
@@ -80,20 +77,12 @@ export default function EnhancedMainMenu({
     onShowShop();
   };
 
-  const handleShowNotifications = () => {
+  const handleShowInbox = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onShowNotifications();
+    onShowInbox();
   };
 
-  const handleShowNotificationTester = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onShowNotificationTester();
-  };
 
-  const handleShowFirebaseTest = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onShowFirebaseTest();
-  };
 
   const handleShowFriends = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -111,10 +100,7 @@ export default function EnhancedMainMenu({
     }
   };
 
-  const getLevelProgress = () => {
-    if (!user?.gameStats) return 0;
-    return (user.gameStats.experience / user.gameStats.experienceToNext) * 100;
-  };
+
 
   return (
     <View style={styles.container}>
@@ -127,16 +113,29 @@ export default function EnhancedMainMenu({
         <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
           {/* Header with Player Stats */}
           <FloatingBubbles />
-          {/* Friends Button - Completely isolated */}
-          <TouchableOpacity 
-            style={styles.friendsButton} 
-            onPress={handleShowFriends}
-            activeOpacity={0.8}
-          >
-            <View style={styles.friendsButtonContent}>
-              <Ionicons name="person-add" size={24} color="#fff" />
-            </View>
-          </TouchableOpacity>
+          {/* Top Action Buttons - Friends and Inbox */}
+          <View style={styles.topActionButtons}>
+            <TouchableOpacity 
+              style={styles.topActionButton} 
+              onPress={handleShowInbox}
+              activeOpacity={0.8}
+            >
+              <View style={styles.topActionButtonContent}>
+                <Ionicons name="mail" size={24} color="#fff" />
+                <NotificationBadge />
+              </View>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.topActionButton} 
+              onPress={handleShowFriends}
+              activeOpacity={0.8}
+            >
+              <View style={styles.topActionButtonContent}>
+                <Ionicons name="person-add" size={24} color="#fff" />
+              </View>
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.header}>
             <TouchableOpacity style={styles.playerInfo} onPress={handleShowProfile} activeOpacity={0.7}>
@@ -158,35 +157,7 @@ export default function EnhancedMainMenu({
               </View>
             </TouchableOpacity>
 
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{user?.coins || 0}</Text>
-                <Text style={styles.statLabel}>Coins</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{user?.gameStats?.gamesWon || 0}</Text>
-                <Text style={styles.statLabel}>Wins</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{user?.gameStats?.calculatedWinRate || 0}%</Text>
-                <Text style={styles.statLabel}>Win Rate</Text>
-              </View>
-            </View>
 
-            {/* Experience Bar */}
-            <View style={styles.experienceContainer}>
-              <View style={styles.experienceBar}>
-                <View 
-                  style={[
-                    styles.experienceFill, 
-                    { width: `${getLevelProgress()}%` }
-                  ]} 
-                />
-              </View>
-              <Text style={styles.experienceText}>
-                {user?.gameStats?.experience || 0} / {user?.gameStats?.experienceToNext || 100} XP
-              </Text>
-            </View>
           </View>
 
           {/* Quick Actions */}
@@ -199,24 +170,6 @@ export default function EnhancedMainMenu({
             <TouchableOpacity style={styles.quickActionButton} onPress={handleShowShop}>
               <Ionicons name="wallet-outline" size={24} color="#fff" />
               <Text style={styles.quickActionText}>Shop</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.quickActionButton} onPress={handleShowNotifications}>
-              <View style={styles.notificationButtonContainer}>
-                <Ionicons name="notifications" size={24} color="#fff" />
-                <NotificationBadge />
-              </View>
-              <Text style={styles.quickActionText}>Notifications</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.quickActionButton} onPress={handleShowNotificationTester}>
-              <Ionicons name="flask" size={24} color="#fff" />
-              <Text style={styles.quickActionText}>Test Notifications</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.quickActionButton} onPress={handleShowFirebaseTest}>
-              <Ionicons name="flame" size={24} color="#fff" />
-              <Text style={styles.quickActionText}>Firebase Test</Text>
             </TouchableOpacity>
           </View>
 
@@ -314,11 +267,15 @@ const styles = StyleSheet.create({
     paddingBottom: getResponsivePadding(30),
     position: 'relative',
   },
-  friendsButton: {
+  topActionButtons: {
     position: 'absolute',
     top: getResponsivePadding(60),
     right: getResponsivePadding(20),
     zIndex: 1000,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  topActionButton: {
     padding: 0,
     backgroundColor: 'rgba(76, 175, 80, 0.2)',
     borderRadius: borderRadius.lg,
@@ -328,17 +285,18 @@ const styles = StyleSheet.create({
     height: scale(44),
     overflow: 'hidden',
   },
-  friendsButtonContent: {
+  topActionButtonContent: {
     width: '100%',
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
+    position: 'relative',
   },
   playerInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     flexWrap: 'wrap',
   },
   avatarContainer: {
@@ -346,8 +304,8 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   avatar: {
-    width: getResponsiveButtonSize(60),
-    height: getResponsiveButtonSize(60),
+    width: getResponsiveButtonSize(50),
+    height: getResponsiveButtonSize(50),
     borderRadius: borderRadius.round,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
@@ -359,8 +317,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: -scale(5),
     right: -scale(5),
-    width: scale(25),
-    height: scale(25),
+    width: scale(15),
+    height: scale(15),
     borderRadius: scale(12.5),
     backgroundColor: '#ff6b6b',
     justifyContent: 'center',
@@ -370,15 +328,15 @@ const styles = StyleSheet.create({
   },
   levelText: {
     color: '#fff',
-    fontSize: getResponsiveFontSize(12),
+    fontSize: getResponsiveFontSize(6),
     fontWeight: 'bold',
   },
   playerDetails: {
     flex: 1,
-    minWidth: responsiveWidth(40),
+    minWidth: responsiveWidth(20),
   },
   playerName: {
-    fontSize: getResponsiveFontSize(24),
+    fontSize: getResponsiveFontSize(12),
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: spacing.xs,
@@ -388,57 +346,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rankDot: {
-    width: scale(12),
-    height: scale(12),
+    width: scale(6),
+    height: scale(6),
     borderRadius: scale(6),
-    marginRight: scale(8),
+    marginRight: scale(4),
   },
   rankText: {
-    fontSize: getResponsiveFontSize(16),
+    fontSize: getResponsiveFontSize(10.5),
     color: '#fff',
     fontWeight: '600',
   },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: spacing.lg,
-    flexWrap: 'wrap',
-  },
-  statItem: {
-    alignItems: 'center',
-    minWidth: responsiveWidth(25),
-    marginBottom: spacing.sm,
-  },
-  statValue: {
-    fontSize: getResponsiveFontSize(20),
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 5,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  experienceContainer: {
-    marginBottom: 20,
-  },
-  experienceBar: {
-    height: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 4,
-    marginBottom: 8,
-    overflow: 'hidden',
-  },
-  experienceFill: {
-    height: '100%',
-    backgroundColor: '#4ecdc4',
-    borderRadius: 4,
-  },
-  experienceText: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-  },
+
   quickActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -458,9 +376,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
   },
-  notificationButtonContainer: {
-    position: 'relative',
-  },
+
   gameOptions: {
     paddingHorizontal: 20,
     marginBottom: 30,

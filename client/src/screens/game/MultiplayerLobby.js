@@ -13,7 +13,7 @@ import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import NetworkService from '../services/NetworkService';
+import NetworkService from '../../services/NetworkService';
 
 export default function MultiplayerLobby({ onGameStart, onBack }) {
   const [connectionStatus, setConnectionStatus] = useState('connecting');

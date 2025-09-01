@@ -14,7 +14,7 @@ require('./config/firebase');
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
-const gameRoutes = require('./routes/games');
+
 const shopRoutes = require('./routes/shop');
 const paymentRoutes = require('./routes/payments');
 const notificationRoutes = require('./routes/notifications');
@@ -64,7 +64,7 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/games', gameRoutes);
+
 app.use('/api/shop', shopRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/notifications', notificationRoutes);

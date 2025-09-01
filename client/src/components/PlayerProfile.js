@@ -7,14 +7,33 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import * as Haptics from 'expo-haptics';
+import { ResponsiveWrapper, ResponsiveContainer, ResponsiveCard } from './ResponsiveWrapper';
+import { Heading2, BodyText } from './ResponsiveText';
+import { 
+  scale,
+  getResponsivePadding,
+  getResponsiveFontSize,
+  spacing,
+  borderRadius
+} from '../utils/responsiveUtils';
 
 
-export default function PlayerProfile({ onBack, user }) {
+export default function PlayerProfile({ visible, onClose, user }) {
   const { logout } = useAuth();
+
+  const getRankColor = (rank) => {
+    switch (rank) {
+      case 'Bronze': return '#cd7f32';
+      case 'Silver': return '#c0c0c0';
+      case 'Gold': return '#ffd700';
+      case 'Platinum': return '#e5e4e2';
+      case 'Diamond': return '#b9f2ff';
+      default: return '#ffd700';
+    }
+  };
 
   const handleLogout = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -37,137 +56,199 @@ export default function PlayerProfile({ onBack, user }) {
       ]
     );
   };
+  if (!visible) return null;
+
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={['#667eea', '#764ba2', '#f093fb', '#f5576c']}
-        style={styles.gradientBackground}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Player Profile</Text>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={24} color="#fff" />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView style={styles.content}>
-          <View style={styles.profileCard}>
-            <Text style={styles.profileName}>{user?.username || 'Player'}</Text>
-            <Text style={styles.profileLevel}>Level {user?.gameStats?.level || 1}</Text>
-          </View>
-
-          <View style={styles.statsGrid}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{user?.coins || 0}</Text>
-              <Text style={styles.statLabel}>Coins</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{user?.gameStats?.gamesPlayed || 0}</Text>
-              <Text style={styles.statLabel}>Games Played</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{user?.gameStats?.gamesWon || 0}</Text>
-              <Text style={styles.statLabel}>Games Won</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{user?.gameStats?.calculatedWinRate || 0}%</Text>
-              <Text style={styles.statLabel}>Win Rate</Text>
+    <View style={styles.overlay}>
+        <ResponsiveCard padding={20} style={styles.solidCard}>
+          <View style={styles.header}>
+            <Heading2>Player Profile</Heading2>
+            <View style={styles.headerActions}>
+              <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                <Ionicons name="log-out-outline" size={getResponsiveFontSize(20)} color="#f44336" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                <Ionicons name="close" size={getResponsiveFontSize(24)} color="#fff" />
+              </TouchableOpacity>
             </View>
           </View>
+          
+          <ResponsiveWrapper scrollable>
+            <View style={styles.profileSection}>
+              <View style={styles.profileInfo}>
+                <View style={styles.avatarContainer}>
+                  <Ionicons name="person" size={getResponsiveFontSize(40)} color="#fff" />
+                </View>
+                <View style={styles.profileDetails}>
+                  <Text style={styles.profileName}>{user?.username || 'Player'}</Text>
+                  <Text style={styles.profileLevel}>Level {user?.gameStats?.level || 1}</Text>
+                  <View style={styles.rankContainer}>
+                    <View style={[styles.rankDot, { backgroundColor: getRankColor(user?.gameStats?.rank || 'Bronze') }]} />
+                    <Text style={styles.rankText}>{user?.gameStats?.rank || 'Bronze'}</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
 
-          <Text style={styles.comingSoon}>More profile features coming soon!</Text>
-        </ScrollView>
-      </LinearGradient>
+            <View style={styles.statsSection}>
+              <Heading2>Statistics</Heading2>
+              <View style={styles.statsGrid}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{user?.coins || 0}</Text>
+                  <Text style={styles.statLabel}>Coins</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{user?.gameStats?.gamesPlayed || 0}</Text>
+                  <Text style={styles.statLabel}>Games Played</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{user?.gameStats?.gamesWon || 0}</Text>
+                  <Text style={styles.statLabel}>Games Won</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{user?.gameStats?.calculatedWinRate || 0}%</Text>
+                  <Text style={styles.statLabel}>Win Rate</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.comingSoonSection}>
+              <BodyText style={styles.comingSoon}>More profile features coming soon!</BodyText>
+            </View>
+          </ResponsiveWrapper>
+        </ResponsiveCard>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
   },
-  gradientBackground: {
-    flex: 1,
+  solidCard: {
+    backgroundColor: '#1a1a2e',
+    borderWidth: 2,
+    borderColor: '#333',
+    height: '85%',
+    width: '70%',
+    borderRadius: 15,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 60,
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
   },
-  backButton: {
-    padding: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderRadius: 20,
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-    flex: 1,
+  closeButton: {
+    padding: scale(5),
   },
   logoutButton: {
-    padding: 8,
-    backgroundColor: 'rgba(244, 67, 54, 0.3)',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(244, 67, 54, 0.5)',
+    padding: scale(5),
   },
-  content: {
-    flex: 1,
-    padding: 20,
+  profileSection: {
+    marginBottom: spacing.lg,
   },
-  profileCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 30,
-    borderRadius: 20,
+  profileInfo: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 30,
+    backgroundColor: '#2a2a3e',
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: '#444',
+  },
+  avatarContainer: {
+    width: scale(60),
+    height: scale(60),
+    borderRadius: scale(30),
+    backgroundColor: '#3a3a4e',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
+    borderWidth: 1,
+    borderColor: '#555',
+  },
+  profileDetails: {
+    flex: 1,
   },
   profileName: {
-    fontSize: 28,
+    fontSize: getResponsiveFontSize(20),
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 10,
+    marginBottom: spacing.xs,
   },
   profileLevel: {
-    fontSize: 18,
+    fontSize: getResponsiveFontSize(16),
     color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: spacing.xs,
+  },
+  rankContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rankDot: {
+    width: scale(8),
+    height: scale(8),
+    borderRadius: scale(4),
+    marginRight: scale(6),
+  },
+  rankText: {
+    fontSize: getResponsiveFontSize(14),
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '600',
+  },
+  statsSection: {
+    marginBottom: spacing.lg,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 30,
+    marginTop: spacing.md,
   },
   statItem: {
     width: '48%',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 20,
-    borderRadius: 15,
+    backgroundColor: '#2a2a3e',
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: '#444',
   },
   statValue: {
-    fontSize: 24,
+    fontSize: getResponsiveFontSize(20),
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 5,
+    marginBottom: spacing.xs,
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: getResponsiveFontSize(12),
     color: 'rgba(255, 255, 255, 0.8)',
   },
+  comingSoonSection: {
+    alignItems: 'center',
+    marginTop: spacing.lg,
+  },
   comingSoon: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.6)',
     textAlign: 'center',
     fontStyle: 'italic',
+    color: 'rgba(255, 255, 255, 0.6)',
   },
 });
