@@ -14,6 +14,7 @@ export {
 // Existing Components
 export { default as FloatingBubbles } from './FloatingBubbles';
 export { default as FriendsList } from './FriendsList';
+export { default as FriendsModal } from './FriendsModal';
 export { default as FriendRequests } from './FriendRequests';
 export { default as GameRules } from './GameRules';
 export { default as Leaderboard } from './Leaderboard';

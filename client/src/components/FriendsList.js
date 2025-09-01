@@ -241,11 +241,7 @@ const FriendsList = ({
    */
   const renderFriendItem = useCallback(({ item: friend }) => (
     <ResponsiveWrapper>
-      <TouchableOpacity
-        style={[styles.friendItem, { minHeight: itemHeight }]}
-        onPress={() => onFriendPress && onFriendPress(friend)}
-        activeOpacity={0.7}
-      >
+      <View style={[styles.friendItem, { minHeight: itemHeight }]}>
         <View style={styles.friendInfo}>
           {/* Avatar */}
           <View style={styles.avatarContainer}>
@@ -259,11 +255,12 @@ const FriendsList = ({
                 <Ionicons name="person" size={avatarSize * 0.6} color="#666" />
               </View>
             )}
-            {/* Online status indicator */}
-            <View style={[
-              styles.statusDot, 
-              { backgroundColor: friend.isOnline ? '#4CAF50' : '#999' }
-            ]} />
+            {/* Level badge */}
+            {friend.level && (
+              <View style={styles.levelBadge}>
+                <Text style={styles.levelBadgeText}>{friend.level}</Text>
+              </View>
+            )}
           </View>
 
           {/* Friend details */}
@@ -271,43 +268,35 @@ const FriendsList = ({
             <Text style={[styles.friendName, { fontSize }]} numberOfLines={1}>
               {friend.username}
             </Text>
-            <Text style={styles.lastActive} numberOfLines={1}>
-              {getLastActiveText(friend.lastActive, friend.isOnline)}
+            <View style={styles.powerContainer}>
+              <Ionicons name="shield" size={16} color="#FF9800" />
+              <Text style={styles.powerText}>
+                {friend.power ? `${Math.floor(friend.power / 1000)}K` : '0K'}
+              </Text>
+            </View>
+            <Text style={[
+              styles.statusText,
+              { color: friend.isOnline ? '#4CAF50' : '#999' }
+            ]}>
+              {friend.isOnline ? 'Online' : getLastActiveText(friend.lastActive, friend.isOnline)}
             </Text>
-            {friend.level && (
-              <Text style={styles.level}>Level {friend.level}</Text>
-            )}
           </View>
         </View>
 
-        {/* Action buttons */}
-        <View style={styles.actionButtons}>
-          {showGameInvite && onInviteToGame && friend.isOnline && (
-            <TouchableOpacity
-              style={styles.gameInviteButton}
-              onPress={() => onInviteToGame(friend)}
-            >
-              <Ionicons name="game-controller" size={20} color="#4CAF50" />
-            </TouchableOpacity>
-          )}
-          
-          <TouchableOpacity
-            style={styles.removeButton}
-            onPress={() => removeFriend(friend.id, friend.username)}
-          >
-            <Ionicons name="person-remove" size={18} color="#f44336" />
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
+        {/* Add Friend button */}
+        <TouchableOpacity
+          style={styles.addFriendButton}
+          onPress={() => onFriendPress && onFriendPress(friend)}
+        >
+          <Text style={styles.addFriendButtonText}>Add Friend</Text>
+        </TouchableOpacity>
+      </View>
     </ResponsiveWrapper>
   ), [
     itemHeight, 
     avatarSize, 
     fontSize, 
     onFriendPress, 
-    showGameInvite, 
-    onInviteToGame, 
-    removeFriend, 
     getLastActiveText
   ]);
 
@@ -401,6 +390,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+    borderRadius: 8,
+    marginHorizontal: 8,
+    marginVertical: 4,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   friendInfo: {
     flexDirection: 'row',
@@ -412,24 +412,36 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   avatar: {
-    borderRadius: 25,
+    borderRadius: 30,
     backgroundColor: '#f0f0f0',
+    borderWidth: 2,
+    borderColor: '#FFD700',
   },
   defaultAvatar: {
-    borderRadius: 25,
+    borderRadius: 30,
     backgroundColor: '#f0f0f0',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFD700',
   },
-  statusDot: {
+  levelBadge: {
     position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#3B82F6',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#fff',
+  },
+  levelBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   friendDetails: {
     flex: 1,
@@ -437,27 +449,35 @@ const styles = StyleSheet.create({
   friendName: {
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 2,
+    marginBottom: 4,
   },
-  lastActive: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 2,
-  },
-  level: {
-    fontSize: 11,
-    color: '#999',
-  },
-  actionButtons: {
+  powerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 2,
   },
-  gameInviteButton: {
-    padding: 8,
-    marginRight: 8,
+  powerText: {
+    fontSize: 14,
+    color: '#FF9800',
+    fontWeight: 'bold',
+    marginLeft: 4,
   },
-  removeButton: {
-    padding: 8,
+  statusText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  addFriendButton: {
+    backgroundColor: '#FFC107',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#fff',
+  },
+  addFriendButtonText: {
+    color: '#000',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   loadingFooter: {
     flexDirection: 'row',

@@ -198,19 +198,16 @@ const UserSearch = ({ onUserPress = null }) => {
         return (
           <TouchableOpacity
             style={[
-              styles.addButton,
+              styles.addFriendButton,
               sendingRequest === user.id && styles.disabledButton
             ]}
             onPress={() => sendFriendRequest(user.id, user.username)}
             disabled={sendingRequest === user.id}
           >
             {sendingRequest === user.id ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color="#000" />
             ) : (
-              <>
-                <Ionicons name="person-add" size={16} color="#fff" />
-                <Text style={styles.addText}>Add</Text>
-              </>
+              <Text style={styles.addFriendButtonText}>Add Friend</Text>
             )}
           </TouchableOpacity>
         );
@@ -251,6 +248,12 @@ const UserSearch = ({ onUserPress = null }) => {
                 <Ionicons name="person" size={avatarSize * 0.6} color="#666" />
               </View>
             )}
+            {/* Level badge */}
+            {user.level && (
+              <View style={styles.levelBadge}>
+                <Text style={styles.levelBadgeText}>{user.level}</Text>
+              </View>
+            )}
           </View>
 
           {/* User details */}
@@ -258,6 +261,12 @@ const UserSearch = ({ onUserPress = null }) => {
             <Text style={[styles.username, { fontSize }]} numberOfLines={1}>
               {user.username}
             </Text>
+            <View style={styles.powerContainer}>
+              <Ionicons name="shield" size={16} color="#FF9800" />
+              <Text style={styles.powerText}>
+                {user.power ? `${Math.floor(user.power / 1000)}K` : '0K'}
+              </Text>
+            </View>
             {user.level && (
               <Text style={styles.level}>Level {user.level}</Text>
             )}
@@ -418,8 +427,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+    borderRadius: 8,
+    marginHorizontal: 8,
+    marginVertical: 4,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   userInfo: {
     flexDirection: 'row',
@@ -427,17 +448,40 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   avatarContainer: {
+    position: 'relative',
     marginRight: 12,
   },
   avatar: {
-    borderRadius: 25,
+    borderRadius: 30,
     backgroundColor: '#f0f0f0',
+    borderWidth: 2,
+    borderColor: '#FFD700',
   },
   defaultAvatar: {
-    borderRadius: 25,
+    borderRadius: 30,
     backgroundColor: '#f0f0f0',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFD700',
+  },
+  levelBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#3B82F6',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  levelBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   userDetails: {
     flex: 1,
@@ -445,27 +489,35 @@ const styles = StyleSheet.create({
   username: {
     fontWeight: 'bold',
     color: '#333',
+    marginBottom: 4,
+  },
+  powerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 2,
+  },
+  powerText: {
+    fontSize: 14,
+    color: '#FF9800',
+    fontWeight: 'bold',
+    marginLeft: 4,
   },
   level: {
     fontSize: 12,
     color: '#666',
   },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 12,
+  addFriendButton: {
+    backgroundColor: '#FFC107',
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
-    minWidth: 70,
-    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#fff',
   },
-  addText: {
-    color: '#fff',
-    fontSize: 14,
+  addFriendButtonText: {
+    color: '#000',
+    fontSize: 12,
     fontWeight: 'bold',
-    marginLeft: 4,
   },
   statusBadge: {
     flexDirection: 'row',

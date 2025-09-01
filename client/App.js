@@ -13,6 +13,7 @@ import MultiplayerSelectionScreen from './src/screens/core/MultiplayerSelectionS
 import Shop from './src/screens/core/ShopScreen';
 import Leaderboard from './src/screens/core/LeaderboardScreen';
 import FriendsScreen from './src/screens/core/FriendsScreen';
+import FriendsModal from './src/components/FriendsModal';
 import PlayerProfile from './src/components/PlayerProfile';
 import GameRules from './src/components/GameRules';
 
@@ -35,6 +36,7 @@ function AppContent() {
   const [showRules, setShowRules] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showFriends, setShowFriends] = useState(false);
   const [gameData, setGameData] = useState(null);
   const [multiplayerRoomId, setMultiplayerRoomId] = useState(null);
   const [multiplayerType, setMultiplayerType] = useState(null); // 'lan' or 'internet'
@@ -180,7 +182,7 @@ function AppContent() {
 
 
   const handleShowFriends = () => {
-    setCurrentScreen('friends');
+    setShowFriends(true);
   };
 
   // Handle back navigation for different screens
@@ -191,7 +193,6 @@ function AppContent() {
       case 'leaderboard':
       case 'shop':
       case 'ranked':
-      case 'friends':
         setCurrentScreen('menu');
         break;
       case 'multiplayerSelection':
@@ -328,30 +329,7 @@ function AppContent() {
         );
 
 
-        case 'friends':
-          return (
-            <FriendsScreen
-              navigation={{
-                navigate: (screenName, params) => {
-                  // Handle navigation to other screens from friends
-                  if (screenName === 'Profile' && params?.userId) {
-                    // For now, just go back to menu since we don't have individual profile viewing
-                    handleBackToMenu();
-                  } else if (screenName === 'MultiplayerLobby') {
-                    // Navigate to multiplayer with friend invitation
-                    handleInternetMultiplayer();
-                  } else {
-                    handleBackToMenu();
-                  }
-                },
-                addListener: (event, callback) => {
-                  // Mock navigation listener for focus events
-                  return () => {}; // Return cleanup function
-                }
-              }}
-              route={{}}
-            />
-          );
+
       default:
         return (
           <EnhancedMainMenu
@@ -394,6 +372,10 @@ function AppContent() {
           onClose={() => setShowProfile(false)}
           user={user}
           onShowRules={() => setShowRules(true)}
+        />
+        <FriendsModal
+          visible={showFriends}
+          onClose={() => setShowFriends(false)}
         />
       </SafeAreaView>
     </EdgeGestureBlocker>
