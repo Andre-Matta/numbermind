@@ -41,6 +41,7 @@ export default function EnhancedMainMenu({
   onShowFriends
 }) {
   const { logout, user } = useAuth();
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
   const handleLocalGame = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -89,6 +90,11 @@ export default function EnhancedMainMenu({
     onShowFriends();
   };
 
+  const toggleSidebar = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setIsSidebarExpanded(!isSidebarExpanded);
+  };
+
   const getRankColor = (rank) => {
     switch (rank) {
       case 'Bronze': return '#cd7f32';
@@ -113,41 +119,74 @@ export default function EnhancedMainMenu({
         <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
           {/* Header with Player Stats */}
           <FloatingBubbles />
-          {/* Top Action Buttons - Friends and Inbox */}
-          <View style={styles.topActionButtons}>
-            <TouchableOpacity 
-              style={styles.topActionButton} 
-              onPress={handleShowInbox}
-              activeOpacity={0.8}
-            >
-              <View style={styles.topActionButtonContent}>
-                <Ionicons name="mail" size={24} color="#fff" />
-                <NotificationBadge />
-              </View>
+          {/* Right Sidebar - Game Features */}
+          <View style={[styles.rightSidebar, isSidebarExpanded ? styles.sidebarExpanded : styles.sidebarCollapsed]}>
+            {/* Toggle Button */}
+            <TouchableOpacity style={styles.sidebarToggle} onPress={toggleSidebar} activeOpacity={0.8}>
+              <Ionicons 
+                name={isSidebarExpanded ? "chevron-down" : "chevron-up"} 
+                size={16} 
+                color="#fff" 
+              />
             </TouchableOpacity>
             
-            <TouchableOpacity 
-              style={styles.topActionButton} 
-              onPress={handleShowFriends}
-              activeOpacity={0.8}
-            >
-              <View style={styles.topActionButtonContent}>
-                <Ionicons name="person-add" size={24} color="#fff" />
-              </View>
-            </TouchableOpacity>
+            {isSidebarExpanded && (
+              <>
+                <TouchableOpacity style={styles.sidebarButton} onPress={() => {}} activeOpacity={0.8}>
+                  <View style={styles.sidebarButtonContent}>
+                    <Ionicons name="bag" size={18} color="#fff" />
+                    <Text style={styles.sidebarButtonText}>Bag</Text>
+                    <View style={styles.notificationDot} />
+                  </View>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.sidebarButton} onPress={() => {}} activeOpacity={0.8}>
+                  <View style={styles.sidebarButtonContent}>
+                    <Ionicons name="clipboard" size={18} color="#fff" />
+                    <Text style={styles.sidebarButtonText}>Quests</Text>
+                    <View style={styles.notificationDot} />
+                  </View>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.sidebarButton} onPress={handleShowFriends} activeOpacity={0.8}>
+                  <View style={styles.sidebarButtonContent}>
+                    <Ionicons name="people" size={18} color="#fff" />
+                    <Text style={styles.sidebarButtonText}>Friends</Text>
+                    <View style={styles.notificationDot} />
+                  </View>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.sidebarButton} onPress={handleShowInbox} activeOpacity={0.8}>
+                  <View style={styles.sidebarButtonContent}>
+                    <Ionicons name="mail" size={18} color="#fff" />
+                    <Text style={styles.sidebarButtonText}>Mail</Text>
+                    <View style={styles.notificationDot} />
+                  </View>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.sidebarButton} onPress={() => {}} activeOpacity={0.8}>
+                  <View style={styles.sidebarButtonContent}>
+                    <Ionicons name="library" size={18} color="#fff" />
+                    <Text style={styles.sidebarButtonText}>Monster Gallery</Text>
+                    <View style={styles.notificationDot} />
+                  </View>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
 
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.playerInfo} onPress={handleShowProfile} activeOpacity={0.7}>
+          {/* Top Bar with Player Profile and Resources */}
+          <View style={styles.topBar}>
+            {/* Left side - Player Profile */}
+            <TouchableOpacity style={styles.playerProfileSection} onPress={handleShowProfile} activeOpacity={0.7}>
               <View style={styles.avatarContainer}>
                 <View style={styles.avatar}>
-                  <Ionicons name="person" size={40} color="#fff" />
+                  <Ionicons name="person" size={24} color="#fff" />
                 </View>
                 <View style={styles.levelBadge}>
-                  <Text style={styles.levelText}>{user?.gameStats?.level || 1}</Text>
+                  <Text style={styles.levelText}>{user?.gameStats?.level || 38}</Text>
                 </View>
               </View>
-              
               <View style={styles.playerDetails}>
                 <Text style={styles.playerName}>{user?.username || 'Player'}</Text>
                 <View style={styles.rankContainer}>
@@ -157,7 +196,21 @@ export default function EnhancedMainMenu({
               </View>
             </TouchableOpacity>
 
-
+            {/* Right side - Resources */}
+            <View style={styles.resourcesSection}>
+              <View style={styles.resourceItem}>
+                <Ionicons name="flash" size={16} color="#4CAF50" />
+                <Text style={styles.resourceText}>45/45</Text>
+              </View>
+              <View style={styles.resourceItem}>
+                <Ionicons name="logo-bitcoin" size={16} color="#FFD700" />
+                <Text style={styles.resourceText}>803K</Text>
+              </View>
+              <View style={styles.resourceItem}>
+                <Ionicons name="diamond" size={16} color="#9C27B0" />
+                <Text style={styles.resourceText}>17K</Text>
+              </View>
+            </View>
           </View>
 
           {/* Quick Actions */}
@@ -261,37 +314,98 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flex: 1,
   },
-  header: {
-    paddingTop: getResponsivePadding(60),
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: getResponsivePadding(50),
     paddingHorizontal: getResponsivePadding(20),
-    paddingBottom: getResponsivePadding(30),
+    paddingBottom: getResponsivePadding(15),
     position: 'relative',
   },
-  topActionButtons: {
-    position: 'absolute',
-    top: getResponsivePadding(60),
-    right: getResponsivePadding(20),
-    zIndex: 1000,
+  playerProfileSection: {
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'center',
+    flex: 1,
   },
-  topActionButton: {
-    padding: 0,
-    backgroundColor: 'rgba(76, 175, 80, 0.2)',
-    borderRadius: borderRadius.lg,
+
+  resourcesSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  resourceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 4,
+    borderRadius: borderRadius.sm,
     borderWidth: 1,
-    borderColor: 'rgba(76, 175, 80, 0.5)',
-    width: scale(44),
-    height: scale(44),
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  resourceText: {
+    color: '#fff',
+    fontSize: getResponsiveFontSize(10),
+    fontWeight: 'bold',
+    marginLeft: 4,
+  },
+  rightSidebar: {
+    position: 'absolute',
+    right: getResponsivePadding(20),
+    top: getResponsivePadding(130),
+    zIndex: 1000,
+    flexDirection: 'column',
+    gap: spacing.xs,
+  },
+  sidebarExpanded: {
+    width: scale(30),
+  },
+  sidebarCollapsed: {
+    width: scale(30),
+  },
+  sidebarToggle: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    width: scale(40),
+    height: scale(20),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
+  sidebarButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    width: scale(40),
+    height: scale(40),
     overflow: 'hidden',
   },
-  topActionButtonContent: {
+  sidebarButtonContent: {
     width: '100%',
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
     position: 'relative',
+  },
+  sidebarButtonText: {
+    color: '#fff',
+    fontSize: getResponsiveFontSize(8),
+    fontWeight: '600',
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#f44336',
   },
   playerInfo: {
     flexDirection: 'row',
@@ -304,55 +418,56 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   avatar: {
-    width: getResponsiveButtonSize(50),
-    height: getResponsiveButtonSize(50),
-    borderRadius: borderRadius.round,
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#fff',
-  },
-  levelBadge: {
-    position: 'absolute',
-    bottom: -scale(5),
-    right: -scale(5),
-    width: scale(15),
-    height: scale(15),
-    borderRadius: scale(12.5),
-    backgroundColor: '#ff6b6b',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#fff',
   },
+  levelBadge: {
+    position: 'absolute',
+    bottom: -scale(2),
+    right: -scale(2),
+    width: scale(16),
+    height: scale(16),
+    borderRadius: scale(8),
+    backgroundColor: '#ff6b6b',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#fff',
+  },
   levelText: {
     color: '#fff',
-    fontSize: getResponsiveFontSize(6),
+    fontSize: getResponsiveFontSize(8),
     fontWeight: 'bold',
   },
   playerDetails: {
     flex: 1,
     minWidth: responsiveWidth(20),
+    marginLeft: spacing.xs,
   },
   playerName: {
-    fontSize: getResponsiveFontSize(12),
+    fontSize: getResponsiveFontSize(14),
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: spacing.xs,
+    marginBottom: 2,
   },
   rankContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   rankDot: {
-    width: scale(6),
-    height: scale(6),
-    borderRadius: scale(6),
-    marginRight: scale(4),
+    width: scale(5),
+    height: scale(5),
+    borderRadius: scale(5),
+    marginRight: scale(3),
   },
   rankText: {
-    fontSize: getResponsiveFontSize(10.5),
+    fontSize: getResponsiveFontSize(8),
     color: '#fff',
     fontWeight: '600',
   },
@@ -379,6 +494,7 @@ const styles = StyleSheet.create({
 
   gameOptions: {
     paddingHorizontal: 20,
+    paddingRight: 80, // Account for smaller right sidebar
     marginBottom: 30,
     gap: 20,
   },
