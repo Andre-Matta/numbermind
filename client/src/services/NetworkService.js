@@ -589,6 +589,22 @@ class NetworkService {
     }
   }
 
+  // Check if connected to server
+  isConnected() {
+    return this.socket && this.socket.connected;
+  }
+
+  // Get connection status
+  getConnectionStatus() {
+    if (this.isConnecting) {
+      return 'connecting';
+    } else if (this.isConnected()) {
+      return 'connected';
+    } else {
+      return 'disconnected';
+    }
+  }
+
   // Get room info
   getRoomInfo() {
     return {

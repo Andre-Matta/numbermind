@@ -9,7 +9,7 @@ import EnhancedMainMenu from './src/screens/EnhancedMainMenu';
 import LocalGameScreen from './src/screens/LocalGameScreen';
 import MultiplayerSelectionScreen from './src/screens/MultiplayerSelectionScreen';
 import LANLobby from './src/screens/LANLobby';
-import InternetMultiplayerLobby from './src/screens/InternetMultiplayerLobby';
+import MultiplayerLobby from './src/screens/MultiplayerLobby';
 import MultiplayerGameScreen from './src/screens/MultiplayerGameScreen';
 import OfflineLANGameScreen from './src/screens/OfflineLANGameScreen';
 import LocalGameSetup from './src/components/LocalGameSetup';
@@ -290,7 +290,7 @@ function AppContent() {
         );
       case 'internetMultiplayer':
         return (
-          <InternetMultiplayerLobby
+          <MultiplayerLobby
             onGameStart={handleMultiplayerGameStart}
             onBack={() => setCurrentScreen('multiplayerSelection')}
           />

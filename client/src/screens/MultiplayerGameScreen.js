@@ -171,7 +171,7 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
       if (status.isReady) {
         console.log('✅ Room is ready! Transitioning to setup state');
         setGameStateWithRef('setup');
-        Alert.alert('Room Ready!', 'Both players are now in the room. Enter your secret number to start the game.');
+        // Removed alert - no longer showing "Room Ready!" alert
       } else {
         console.log('⏳ Room is not ready yet, waiting for roomReady event...');
       }
@@ -206,7 +206,7 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
           if (status.isReady) {
             console.log('✅ Room is ready! Transitioning to setup state');
             setGameStateWithRef('setup');
-            Alert.alert('Room Ready!', 'Both players are now in the room. Enter your secret number to start the game.');
+            // Removed alert - no longer showing "Room Ready!" alert
           } else {
             console.log('⏳ Room is not ready yet, continuing to wait...');
           }
@@ -224,7 +224,7 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     console.log('🔍 Current roomId:', roomId, 'Event roomId:', data.roomId);
     if (data.roomId === roomId) {
       console.log('✅ Player joined our room');
-      Alert.alert('Player Joined!', 'Another player has joined the room.');
+      // Removed alert - no longer showing "Player Joined!" alert
     } else {
       console.log('❌ Player joined different room, ignoring');
     }
@@ -240,7 +240,7 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     if (data.roomId === roomId) {
       console.log('✅ Room is ready, transitioning to setup state');
       setGameStateWithRef('setup');
-      Alert.alert('Room Ready!', 'Both players are now in the room. Enter your secret number to start the game.');
+      // Removed alert - no longer showing "Room Ready!" alert
     } else {
       console.log('❌ Room ready for different room, ignoring');
       console.log('❌ Expected roomId:', roomId, 'Received roomId:', data.roomId);
@@ -346,8 +346,17 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
       console.log('✅ Game update for our room, transitioning to playing state');
       console.log('✅ Game state transitioning from', currentGameStateRef.current, 'to playing');
       setGameStateWithRef('playing');
+      
+      // Fix turn detection - compare with playerId properly
       const isMyTurnNow = data.currentTurn === NetworkService.playerId;
       console.log('🎯 Current turn:', data.currentTurn, 'Player ID:', NetworkService.playerId, 'Is my turn:', isMyTurnNow);
+      console.log('🎯 Turn comparison:', {
+        currentTurn: data.currentTurn,
+        playerId: NetworkService.playerId,
+        currentTurnType: typeof data.currentTurn,
+        playerIdType: typeof NetworkService.playerId,
+        isEqual: data.currentTurn === NetworkService.playerId
+      });
       setIsMyTurn(isMyTurnNow);
     } else {
       console.log('❌ Game update for different room, ignoring');
@@ -539,7 +548,7 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
       if (result && result.success) {
         setHasSubmittedNumber(true); // Mark as submitted
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert('Success', 'Secret number submitted! Waiting for opponent...');
+        // Removed success alert - no longer showing "Success" alert
         
         // Clear the input to show it's been submitted
         setSecretNumber(['', '', '', '', '']);
@@ -554,6 +563,15 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     } finally {
       setIsSubmittingNumber(false);
     }
+  };
+
+  const autoFillSecretNumber = () => {
+    const number = [];
+    for (let i = 0; i < 5; i++) {
+      number.push(Math.floor(Math.random() * 10).toString());
+    }
+    setSecretNumber(number);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   const submitGuess = async () => {
@@ -718,8 +736,19 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
         <TouchableOpacity style={styles.clearButton} onPress={() => handleClear(isSecret)}>
           <Ionicons name="refresh" size={24} color="#fff" />
         </TouchableOpacity>
+        {isSecret && (
+          <TouchableOpacity 
+            style={styles.autoFillButton} 
+            onPress={autoFillSecretNumber}
+          >
+            <Text style={styles.autoFillButtonText}>Auto-fill</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity 
-          style={[styles.submitButton, (isSecret ? secretNumber.some(d => d === '') : currentGuess.some(d => d === '')) && styles.submitButtonDisabled]} 
+          style={[
+            styles.submitButton, 
+            (isSecret ? secretNumber.some(d => d === '') : currentGuess.some(d => d === '')) && styles.submitButtonDisabled
+          ]} 
           onPress={isSecret ? submitSecretNumber : submitGuess}
           disabled={
             (isSecret ? secretNumber.some(d => d === '') : currentGuess.some(d => d === '')) || 
@@ -804,16 +833,16 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     );
   }
 
-  if (gameState === 'setup') {
+    if (gameState === 'setup') {
     return (
       <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.container}>
-                 <View style={styles.header}>
-           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-             <Ionicons name="arrow-back" size={24} color="#fff" />
-           </TouchableOpacity>
-           <Text style={styles.title}>Setup Game</Text>
-           <View style={styles.placeholder} />
-         </View>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Setup Game</Text>
+          <View style={styles.placeholder} />
+        </View>
 
         <View style={styles.setupContainer}>
           <Text style={styles.setupTitle}>Enter Your Secret Number</Text>
@@ -821,7 +850,11 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
             Choose a 5-digit number for your opponent to guess
           </Text>
           
-          {renderInputBoxes(true)}
+          <View style={styles.playerInput}>
+            <Text style={styles.playerLabel}>Your Secret Number</Text>
+            {renderInputBoxes(true)}
+          </View>
+          
           {renderNumberButtons(true)}
 
           <Text style={styles.roomIdText}>Room: {roomId}</Text>
@@ -848,16 +881,16 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     );
   }
 
-  return (
+    return (
     <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.container}>
-             {/* Header */}
-       <View style={styles.header}>
-         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-           <Ionicons name="arrow-back" size={24} color="#fff" />
-         </TouchableOpacity>
-         <Text style={styles.title}>Multiplayer Game</Text>
-         <View style={styles.placeholder} />
-       </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Multiplayer Game</Text>
+        <View style={styles.placeholder} />
+      </View>
 
       {/* Room Info */}
       <View style={styles.roomInfo}>
@@ -1106,13 +1139,24 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textAlign: 'center',
   },
-     setupSubtitle: {
-     fontSize: 16,
-     color: '#6c757d',
-     marginBottom: 30,
-     textAlign: 'center',
-     paddingHorizontal: 20,
-   },
+         setupSubtitle: {
+      fontSize: 16,
+      color: '#6c757d',
+      marginBottom: 30,
+      textAlign: 'center',
+      paddingHorizontal: 20,
+    },
+    playerInput: {
+      marginBottom: 20,
+      alignItems: 'center',
+    },
+    playerLabel: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: '#fff',
+      marginBottom: 15,
+      textAlign: 'center',
+    },
    cancelButton: {
      backgroundColor: '#dc3545',
      paddingHorizontal: 30,
@@ -1226,10 +1270,25 @@ const styles = StyleSheet.create({
      fontWeight: 'bold',
      fontSize: 12,
    },
-   submitButtonDisabled: {
-     backgroundColor: '#6c757d',
-     opacity: 0.6,
-   },
+       submitButtonDisabled: {
+      backgroundColor: '#6c757d',
+      opacity: 0.6,
+    },
+    autoFillButton: {
+      width: (width - 80) / 4,
+      height: 50,
+      backgroundColor: '#17a2b8',
+      borderRadius: 25,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: '#138496',
+    },
+    autoFillButtonText: {
+      color: '#fff',
+      fontWeight: 'bold',
+      fontSize: 12,
+    },
    errorContainer: {
      alignItems: 'center',
      padding: 20,
