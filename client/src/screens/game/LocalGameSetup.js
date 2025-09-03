@@ -198,12 +198,6 @@ export default function LocalGameSetup({ onGameStart, onBack }) {
           <Ionicons name="refresh" size={24} color="#fff" />
         </TouchableOpacity>
         <TouchableOpacity 
-          style={styles.autoFillButton} 
-          onPress={currentPlayer === 1 ? autoFillPlayer1 : autoFillPlayer2}
-        >
-          <Text style={styles.autoFillButtonText}>Auto-fill</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
           style={[
             styles.submitButton, 
             (currentPlayer === 1 ? player1Number.some(d => d === '') : player2Number.some(d => d === '')) && styles.buttonDisabled
@@ -214,6 +208,14 @@ export default function LocalGameSetup({ onGameStart, onBack }) {
           <Text style={styles.submitButtonText}>
             {currentPlayer === 1 ? 'Next' : 'Start Game'}
           </Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.autoFillRow}>
+        <TouchableOpacity 
+          style={styles.autoFillButton} 
+          onPress={currentPlayer === 1 ? autoFillPlayer1 : autoFillPlayer2}
+        >
+          <Text style={styles.autoFillButtonText}>Auto-fill</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -509,10 +511,12 @@ const styles = StyleSheet.create({
     textShadowRadius: 3,
   },
   numberButtonsContainer: {
+    position: 'relative',
+    paddingBottom: 80,
   },
   numberRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
     marginBottom: 12,
   },
   numberButton: {
@@ -535,55 +539,80 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     alignItems: 'center',
     gap: 6,
+    marginTop: 16,
+  },
+  autoFillRow: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 10,
+    alignItems: 'center',
+    paddingTop: 8,
   },
   deleteButton: {
     width: (width - 64) / 4,
-    height: 46,
-    backgroundColor: '#dc3545',
-    borderRadius: 25,
+    height: 54,
+    backgroundColor: '#e74c3c',
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#c82333',
+    borderColor: '#c0392b',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
   clearButton: {
     width: (width - 64) / 4,
-    height: 46,
-    backgroundColor: '#ffc107',
-    borderRadius: 25,
+    height: 54,
+    backgroundColor: '#ffca3a',
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#e0a800',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
   autoFillButton: {
     width: (width - 64) / 4,
-    height: 46,
+    height: 52,
     backgroundColor: '#17a2b8',
-    borderRadius: 25,
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#138496',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
   autoFillButtonText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 13,
   },
   submitButton: {
     width: (width - 64) / 4,
-    height: 46,
-    backgroundColor: '#28a745',
-    borderRadius: 25,
+    height: 54,
+    backgroundColor: '#2ecc71',
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#1e7e34',
+    borderColor: '#27ae60',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
   submitButtonText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 13,
   },
 });

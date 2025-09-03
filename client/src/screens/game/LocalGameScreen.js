@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -39,6 +39,7 @@ export default function LocalGameScreen({ gameData, onBack, onNewGame }) {
   const [winner, setWinner] = useState(null);
   const [selectedSkin, setSelectedSkin] = useState('default'); // default, gold, neon, etc.
   const [showSkinSelector, setShowSkinSelector] = useState(false);
+  const [hasShownNumber, setHasShownNumber] = useState(false);
   const [boxAnimations] = useState([
     new Animated.Value(1),
     new Animated.Value(1),
@@ -46,6 +47,10 @@ export default function LocalGameScreen({ gameData, onBack, onNewGame }) {
     new Animated.Value(1),
     new Animated.Value(1),
   ]);
+  const lastGuessAnimRef = useRef(null);
+  const showBtnOpacity = useRef(new Animated.Value(0)).current;
+  const showBtnTranslate = useRef(new Animated.Value(10)).current;
+  const showBtnScale = useRef(new Animated.Value(0.95)).current;
 
   const { player1Number, player2Number, gameMode } = gameData;
 
@@ -66,6 +71,24 @@ export default function LocalGameScreen({ gameData, onBack, onNewGame }) {
     // Initialize game state
     setGameState('playing');
   }, []);
+
+  useEffect(() => {
+    if (!hasShownNumber) {
+      showBtnOpacity.setValue(0);
+      showBtnTranslate.setValue(10);
+      showBtnScale.setValue(0.95);
+      Animated.parallel([
+        Animated.timing(showBtnOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.timing(showBtnTranslate, { toValue: 0, duration: 220, useNativeDriver: true }),
+        Animated.spring(showBtnScale, { toValue: 1, friction: 7, tension: 100, useNativeDriver: true })
+      ]).start();
+    }
+  }, [hasShownNumber]);
+
+  const handleShowMyNumber = () => {
+    setHasShownNumber(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
 
   const handleNumberPress = (number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -135,6 +158,14 @@ export default function LocalGameScreen({ gameData, onBack, onNewGame }) {
       ...prev,
       [`player${currentPlayer}`]: [...prev[`player${currentPlayer}`], guessData]
     }));
+    // Trigger a brief row highlight for the latest guess
+    lastGuessAnimRef.current = {
+      player: currentPlayer,
+      anim: new Animated.Value(0)
+    };
+    Animated.timing(lastGuessAnimRef.current.anim, { toValue: 1, duration: 350, useNativeDriver: false }).start(() => {
+      Animated.timing(lastGuessAnimRef.current.anim, { toValue: 0, duration: 400, useNativeDriver: false }).start();
+    });
 
     // Check for win
     if (feedback.exact === 5) {
@@ -148,41 +179,47 @@ export default function LocalGameScreen({ gameData, onBack, onNewGame }) {
     // Switch turns
     setCurrentPlayer(currentPlayer === 1 ? 2 : 1);
     setCurrentGuess(['', '', '', '', '']);
+    setHasShownNumber(false);
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   const calculateFeedback = (guess, secretNumber, mode) => {
-    let exact = 0;
-    let misplaced = 0;
-    let outOfPlace = 0;
-    let totalCorrect = 0;
-
-    // Count exact matches
-    for (let i = 0; i < 5; i++) {
-      if (guess[i] === secretNumber[i]) {
-        exact++;
-      }
-    }
-
-    // Count total correct digits
+    // Prepare arrays
     const guessDigits = guess.split('');
     const secretDigits = secretNumber.split('');
 
-    for (let digit of guessDigits) {
-      if (secretDigits.includes(digit)) {
-        totalCorrect++;
+    // First pass: count exact matches and build frequency map of remaining secret digits
+    let exact = 0;
+    const secretRemainderCounts = {};
+    const unmatchedGuessDigits = [];
+    for (let i = 0; i < 5; i++) {
+      if (guessDigits[i] === secretDigits[i]) {
+        exact++;
+      } else {
+        const s = secretDigits[i];
+        secretRemainderCounts[s] = (secretRemainderCounts[s] || 0) + 1;
+        unmatchedGuessDigits.push(guessDigits[i]);
       }
     }
 
-    // In hard mode, only show total correct to user, but keep exact for win checking
+    // Second pass: count misplaced as matches against remaining secret counts
+    let misplaced = 0;
+    for (const d of unmatchedGuessDigits) {
+      if (secretRemainderCounts[d] > 0) {
+        misplaced++;
+        secretRemainderCounts[d]--;
+      }
+    }
+
+    const totalCorrect = exact + misplaced;
+
     if (mode === 'hard') {
+      // Hard mode uses exact for win logic; UI reads exact only.
       return { exact, misplaced: 0, outOfPlace: 0, totalCorrect };
     }
 
-    // In standard mode, show exact, misplaced, and out of place
-    misplaced = totalCorrect - exact;
-    outOfPlace = 5 - totalCorrect;
+    const outOfPlace = 5 - totalCorrect;
     return { exact, misplaced, outOfPlace, totalCorrect };
   };
 
@@ -313,32 +350,67 @@ export default function LocalGameScreen({ gameData, onBack, onNewGame }) {
           <Text style={styles.noGuesses}>No guesses yet</Text>
         ) : (
           playerGuesses.map((guess, index) => (
-            <View key={index} style={styles.guessItem}>
+            <Animated.View
+              key={index}
+              style={[
+                styles.guessItem,
+                (lastGuessAnimRef.current && lastGuessAnimRef.current.player === playerNumber && index === playerGuesses.length - 1) && {
+                  backgroundColor: lastGuessAnimRef.current.anim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['rgba(255, 255, 255, 0.05)', 'rgba(74, 144, 226, 0.25)']
+                  }),
+                  shadowOpacity: lastGuessAnimRef.current.anim.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.35] }),
+                  transform: [{ scale: lastGuessAnimRef.current.anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.02] }) }],
+                }
+              ]}
+            >
               <View style={styles.guessRow}>
-                <Text style={styles.guessNumber}>{guess.guess}</Text>
-                <View style={styles.feedbackDots}>
-                  {gameMode === 'hard' ? (
-                    <View style={styles.dotRow}>
-                      {[...Array(guess.feedback.totalCorrect)].map((_, i) => (
-                        <View key={i} style={[styles.feedbackDot, styles.correctDot]} />
-                      ))}
+                {gameMode === 'hard' ? (
+                  <>
+                    <Text style={styles.guessNumber}>{guess.guess}</Text>
+                    <View style={styles.guessRightGroup}>
+                      <View
+                        style={[
+                          styles.correctPill,
+                          (guess.feedback.exact === 0) ? styles.correctPillRed : styles.correctPillGreen,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.correctPillText,
+                            (guess.feedback.exact === 0) ? styles.correctPillTextRed : styles.correctPillTextGreen,
+                          ]}
+                        >
+                          {guess.feedback.exact}
+                        </Text>
+                      </View>
                     </View>
-                  ) : (
-                    <View style={styles.dotRow}>
-                      {[...Array(guess.feedback.exact)].map((_, i) => (
-                        <View key={i} style={[styles.feedbackDot, styles.exactDot]} />
-                      ))}
-                      {[...Array(guess.feedback.misplaced)].map((_, i) => (
-                        <View key={i} style={[styles.feedbackDot, styles.misplacedDot]} />
-                      ))}
-                      {[...Array(guess.feedback.outOfPlace)].map((_, i) => (
-                        <View key={i} style={[styles.feedbackDot, styles.outOfPlaceDot]} />
-                      ))}
+                  </>
+                ) : (
+                  <View style={styles.guessLeftGroup}>
+                    <Text style={styles.guessNumber}>{guess.guess}</Text>
+                    <View
+                      style={[
+                        styles.correctPill,
+                        (guess.feedback.exact === 0) ? styles.correctPillRed : styles.correctPillGreen,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.correctPillText,
+                          (guess.feedback.exact === 0) ? styles.correctPillTextRed : styles.correctPillTextGreen,
+                        ]}
+                      >
+                        {guess.feedback.exact}
+                      </Text>
                     </View>
-                  )}
-                </View>
+                    <View style={[styles.correctPill, styles.misplacedPillYellow]}>
+                      <Text style={[styles.correctPillText, styles.misplacedPillTextYellow]}>{guess.feedback.misplaced}</Text>
+                    </View>
+                  </View>
+                )}
               </View>
-            </View>
+            </Animated.View>
           ))
         )}
       </ScrollView>
@@ -455,6 +527,24 @@ export default function LocalGameScreen({ gameData, onBack, onNewGame }) {
         <Text style={styles.currentPlayerText}>
           Current Turn: Player {currentPlayer}
         </Text>
+      </View>
+
+      {/* Show My Number / Banner */}
+      <View style={styles.myNumberSection}>
+        {hasShownNumber ? (
+          <View style={[styles.myNumberBanner, styles.myNumberBannerHard]}>
+            <Text style={styles.myNumberLabel}>Your Number</Text>
+            <Text style={styles.myNumberValue}>
+              {currentPlayer === 1 ? player1Number : player2Number}
+            </Text>
+          </View>
+        ) : (
+          <Animated.View style={{ opacity: showBtnOpacity, transform: [{ translateY: showBtnTranslate }, { scale: showBtnScale }] }}>
+            <TouchableOpacity style={styles.showNumberButton} onPress={handleShowMyNumber}>
+              <Text style={styles.showNumberButtonText}>Show My Number</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
       </View>
 
       {/* Guess History - Moved to top */}
@@ -846,11 +936,26 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
   guessRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  guessRightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 'auto',
+  },
+  guessLeftGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
   },
   guessNumber: {
     fontSize: 18,
@@ -858,6 +963,27 @@ const styles = StyleSheet.create({
     color: '#fff',
     textAlign: 'center',
     marginBottom: 8,
+  },
+  guessNumberColumn: {
+    flex: 1,
+  },
+  feedbackCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  guessRowSpacer: {
+    flex: 1,
+  },
+  feedbackText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  feedbackTextGreen: {
+    color: '#28a745',
+  },
+  feedbackTextRed: {
+    color: '#dc3545',
   },
   feedbackDots: {
     alignItems: 'center',
@@ -885,6 +1011,84 @@ const styles = StyleSheet.create({
   },
   correctDot: {
     backgroundColor: '#17a2b8', // Blue for total correct in hard mode
+  },
+  feedbackNumbersContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  feedbackPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  feedbackNumberText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+    marginRight: 6,
+  },
+  feedbackLabelText: {
+    color: '#9fb3c8',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  feedbackPillPrimary: {
+    backgroundColor: 'rgba(74, 144, 226, 0.2)',
+    borderColor: '#4a90e2',
+    borderWidth: 2,
+  },
+  feedbackNumberTextPrimary: {
+    color: '#4a90e2',
+  },
+  feedbackLabelTextPrimary: {
+    color: '#4a90e2',
+  },
+  feedbackPillGreen: {
+    backgroundColor: 'rgba(40, 167, 69, 0.18)',
+    borderColor: '#28a745',
+    borderWidth: 2,
+  },
+  feedbackNumberTextGreen: {
+    color: '#28a745',
+  },
+  correctPill: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 2,
+  },
+  correctPillGreen: {
+    backgroundColor: 'rgba(40, 167, 69, 0.18)',
+    borderColor: '#28a745',
+  },
+  correctPillRed: {
+    backgroundColor: 'rgba(220, 53, 69, 0.18)',
+    borderColor: '#dc3545',
+  },
+  misplacedPillYellow: {
+    backgroundColor: 'rgba(255, 193, 7, 0.18)',
+    borderColor: '#ffc107',
+    borderWidth: 2,
+  },
+  correctPillText: {
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+  correctPillTextGreen: {
+    color: '#28a745',
+  },
+  correctPillTextRed: {
+    color: '#dc3545',
+  },
+  misplacedPillTextYellow: {
+    color: '#ffc107',
+    fontWeight: 'bold',
   },
   finishedContainer: {
     flex: 1,
@@ -918,5 +1122,56 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  myNumberSection: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+    paddingHorizontal: getResponsivePadding(20),
+  },
+  myNumberBanner: {
+    borderWidth: 3,
+    paddingVertical: getResponsivePadding(10),
+    paddingHorizontal: getResponsivePadding(16),
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    minWidth: getResponsiveContainerWidth(60),
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  myNumberBannerHard: {
+    backgroundColor: '#0f3460',
+    borderColor: '#00bfff',
+    shadowColor: '#00bfff',
+  },
+  myNumberBannerDefault: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.15)',
+    shadowColor: '#000',
+  },
+  myNumberLabel: {
+    color: '#9ec7ff',
+    fontSize: getResponsiveFontSize(12),
+    marginBottom: 4,
+  },
+  myNumberValue: {
+    color: '#fff',
+    fontSize: getResponsiveFontSize(22),
+    fontWeight: 'bold',
+    letterSpacing: 2,
+  },
+  showNumberButton: {
+    backgroundColor: '#4a90e2',
+    borderColor: '#4a90e2',
+    borderWidth: 2,
+    paddingVertical: getResponsivePadding(10),
+    paddingHorizontal: getResponsivePadding(16),
+    borderRadius: borderRadius.lg,
+  },
+  showNumberButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: getResponsiveFontSize(14),
   },
 });
