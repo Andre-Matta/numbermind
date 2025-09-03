@@ -676,7 +676,7 @@ const setupSocketIO = (server) => {
           return callback({ success: false, error: 'Game not in progress' });
         }
 
-        if (game.currentTurn.toString() !== socket.userId) {
+        if (game.currentTurn?.toString() !== socket.userId) {
           console.log(`⚠️ Turn mismatch: currentTurn=${game.currentTurn} (${typeof game.currentTurn}), socket.userId=${socket.userId} (${typeof socket.userId})`);
           return callback({ success: false, error: 'Not your turn' });
         }
@@ -687,7 +687,7 @@ const setupSocketIO = (server) => {
         }
 
         // Calculate feedback
-        const opponentId = game.players.find(p => p !== socket.userId);
+        const opponentId = game.players.find(p => p.toString() !== socket.userId)?.toString();
         const opponentNumber = game.playerNumbers.get(opponentId);
         if (!opponentNumber) {
           return callback({ success: false, error: 'Opponent number not found' });
@@ -704,7 +704,8 @@ const setupSocketIO = (server) => {
         };
 
         game.guessHistory.push(guessData);
-        game.currentTurn = game.players.find(p => p !== socket.userId);
+        const nextTurnId = game.players.find(p => p.toString() !== socket.userId);
+        game.currentTurn = nextTurnId; // store as ObjectId
 
         // Check for win
         if (feedback.exact === 5) {
