@@ -8,20 +8,19 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import * as Haptics from 'expo-haptics';
-import { ResponsiveWrapper, ResponsiveContainer, ResponsiveCard } from './ResponsiveWrapper';
-import { Heading2, BodyText } from './ResponsiveText';
+import { ResponsiveWrapper, ResponsiveContainer, ResponsiveCard, Heading2, BodyText } from '../../components';
 import { 
   scale,
   getResponsivePadding,
   getResponsiveFontSize,
   spacing,
   borderRadius
-} from '../utils/responsiveUtils';
+} from '../../utils/responsiveUtils';
 
 
-export default function PlayerProfile({ visible, onClose, user, onShowRules }) {
+export default function PlayerProfileModal({ visible, onClose, user, onShowRules }) {
   const { logout } = useAuth();
 
   const getRankColor = (rank) => {

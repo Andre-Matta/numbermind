@@ -15,11 +15,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
-import FriendsList from './FriendsList';
-import FriendRequests from './FriendRequests';
-import UserSearch from './UserSearch';
-import FriendsService from '../services/FriendsService';
-import { useResponsiveValue } from '../utils/responsiveUtils';
+import { FriendRequests, FriendsList, UserSearch } from '../../components';
+import FriendsService from '../../services/FriendsService';
 
 /**
  * FriendsModal Component - Modal version of friends list matching the image design

@@ -12,9 +12,8 @@ import EnhancedMainMenu from './src/screens/core/EnhancedMainMenu';
 import MultiplayerSelectionScreen from './src/screens/core/MultiplayerSelectionScreen';
 import Shop from './src/screens/core/ShopScreen';
 import Leaderboard from './src/screens/core/LeaderboardScreen';
-import FriendsScreen from './src/screens/core/FriendsScreen';
-import FriendsModal from './src/components/FriendsModal';
-import PlayerProfile from './src/components/PlayerProfile';
+import FriendsModal from './src/screens/modals/FriendsModal';
+import PlayerProfileModal from './src/screens/modals/PlayerProfileModal';
 import GameRules from './src/components/GameRules';
 
 //game imports
@@ -367,7 +366,7 @@ function AppContent() {
             setShowInbox(false);
           }}
         />
-        <PlayerProfile
+        <PlayerProfileModal
           visible={showProfile}
           onClose={() => setShowProfile(false)}
           user={user}

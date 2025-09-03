@@ -14,11 +14,8 @@ export {
 // Existing Components
 export { default as FloatingBubbles } from './FloatingBubbles';
 export { default as FriendsList } from './FriendsList';
-export { default as FriendsModal } from './FriendsModal';
 export { default as FriendRequests } from './FriendRequests';
 export { default as GameRules } from './GameRules';
-export { default as Leaderboard } from './Leaderboard';
 export { default as LocalGameSetup } from '../screens/game/LocalGameSetup';
-export { default as PlayerProfile } from './PlayerProfile';
 export { default as RankedLobby } from '../screens/game/RankedLobby';
 export { default as UserSearch } from './UserSearch';

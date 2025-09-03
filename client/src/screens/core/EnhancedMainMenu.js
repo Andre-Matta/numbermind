@@ -12,7 +12,6 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import FloatingBubbles from '../../components/FloatingBubbles';
 import { useAuth } from '../../context/AuthContext';
-import NotificationBadge from '../../components/NotificationBadge';
 
 import { 
   scale, 
