@@ -90,7 +90,6 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
         await setupGame();
       } catch (error) {
         console.error('❌ Error setting up game:', error);
-        Alert.alert('Error', 'Failed to set up game: ' + error.message);
       }
     };
     
@@ -182,7 +181,6 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
         console.log('✅ Successfully joined room:', roomId);
       } catch (error) {
         console.error('❌ Failed to join room:', error);
-        Alert.alert('Error', 'Failed to join room: ' + error.message);
         return;
       }
     } else {

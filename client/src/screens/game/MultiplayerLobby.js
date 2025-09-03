@@ -79,7 +79,6 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
         errorMessage = error.description;
       }
       
-      Alert.alert('Internet Connection Failed', errorMessage);
       console.error('Internet Connection error:', error);
     }
   };
@@ -155,13 +154,11 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
       console.error('Error creating internet room:', error);
       setIsCreatingRoom(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Error', error.message || 'Failed to create internet room');
     }
   };
 
   const joinInternetRoom = async (roomIdToJoin = null) => {
     if (!NetworkService.isConnected()) {
-      Alert.alert('Error', 'Internet connection required for multiplayer');
       return;
     }
 
@@ -197,7 +194,6 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
       console.log('Joined room successfully - game will start automatically');
     } catch (error) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Error', error.message || 'Failed to join internet room');
     }
   };
 
@@ -234,15 +230,6 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
         console.log(`Discovery completed: Found ${updatedRooms.length} room(s)`);
       } else {
         console.log('Discovery completed: No rooms found');
-        // Show helpful message when no rooms are found
-        Alert.alert(
-          'No Rooms Found', 
-          'No internet rooms were discovered.\n\n' +
-          '• Make sure other players are hosting rooms\n' +
-          '• Try creating a room yourself\n' +
-          '• Check your internet connection',
-          [{ text: 'OK' }]
-        );
       }
     } catch (error) {
       setIsDiscovering(false);

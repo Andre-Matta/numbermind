@@ -290,8 +290,8 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.25,
     shadowRadius: 10,
-    height: isTablet ? '80%' : '90%',
-    width: isTablet ? '60%' : '90%',
+    height: isTablet ? '75%' : '85%',
+    width: isTablet ? '55%' : '85%',
   },
   header: {
     paddingVertical: getResponsivePadding(16),

@@ -140,8 +140,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a2e',
     borderWidth: 2,
     borderColor: '#333',
-    height: isTablet ? '80%' : '90%',
-    width: isTablet ? '60%' : '90%',
+    height: isTablet ? '75%' : '85%',
+    width: isTablet ? '55%' : '85%',
     borderRadius: borderRadius.lg,
   },
   header: {
