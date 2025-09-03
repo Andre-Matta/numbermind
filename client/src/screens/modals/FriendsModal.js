@@ -17,6 +17,17 @@ import * as Haptics from 'expo-haptics';
 
 import { FriendRequests, FriendsList, UserSearch } from '../../components';
 import FriendsService from '../../services/FriendsService';
+import {
+  scale,
+  responsiveWidth,
+  responsiveHeight,
+  getResponsivePadding,
+  getResponsiveFontSize,
+  spacing,
+  borderRadius,
+  isTablet,
+  isSmallDevice,
+} from '../../utils/responsiveUtils';
 
 /**
  * FriendsModal Component - Modal version of friends list matching the image design
@@ -120,7 +131,7 @@ const FriendsModal = ({ visible, onClose }) => {
       <View style={styles.tabIconContainer}>
         <Ionicons 
           name={currentTab === tabKey ? icon : `${icon}-outline`} 
-          size={16} 
+          size={getResponsiveFontSize(16)} 
           color={currentTab === tabKey ? '#fff' : '#ccc'} 
         />
         {badgeCount > 0 && (
@@ -196,14 +207,14 @@ const FriendsModal = ({ visible, onClose }) => {
           >
             <View style={styles.headerContent}>
               <View style={styles.headerLeft}>
-                <Ionicons name="people" size={24} color="#fff" />
+                <Ionicons name="people" size={getResponsiveFontSize(24)} color="#fff" />
                 <Text style={styles.headerTitle}>Friends</Text>
                 <Text style={styles.friendCount}>
                   {friendStats.totalFriends}/{friendStats.maxFriends}
                 </Text>
               </View>
               <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                <Ionicons name="close" size={24} color="#fff" />
+                <Ionicons name="close" size={getResponsiveFontSize(24)} color="#fff" />
               </TouchableOpacity>
             </View>
           </LinearGradient>
@@ -211,7 +222,7 @@ const FriendsModal = ({ visible, onClose }) => {
           {/* Search Bar */}
           <View style={styles.searchContainer}>
             <View style={styles.searchInput}>
-              <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+              <Ionicons name="search" size={getResponsiveFontSize(20)} color="#666" style={styles.searchIcon} />
               <TextInput
                 style={styles.searchTextInput}
                 placeholder="Enter player name or ID"
@@ -269,7 +280,7 @@ const styles = StyleSheet.create({
   },
   modal: {
     backgroundColor: '#fff',
-    borderRadius: 20,
+    borderRadius: borderRadius.lg,
     overflow: 'hidden',
     elevation: 10,
     shadowColor: '#000',
@@ -279,12 +290,12 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.25,
     shadowRadius: 10,
-    height: '85%',
-    width: '70%',
+    height: isTablet ? '80%' : '90%',
+    width: isTablet ? '60%' : '90%',
   },
   header: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: getResponsivePadding(16),
+    paddingHorizontal: getResponsivePadding(20),
   },
   headerContent: {
     flexDirection: 'row',
@@ -296,25 +307,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: getResponsiveFontSize(20),
     fontWeight: 'bold',
     color: '#fff',
-    marginLeft: 8,
+    marginLeft: spacing.xs,
   },
   friendCount: {
-    fontSize: 14,
+    fontSize: getResponsiveFontSize(12),
     color: '#fff',
-    marginLeft: 8,
+    marginLeft: spacing.xs,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
+    paddingHorizontal: getResponsivePadding(8),
+    paddingVertical: getResponsivePadding(2),
+    borderRadius: borderRadius.sm,
   },
   closeButton: {
-    padding: 4,
+    padding: scale(4),
   },
   searchContainer: {
-    padding: 16,
+    padding: getResponsivePadding(16),
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
@@ -323,28 +334,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: getResponsivePadding(12),
+    paddingVertical: getResponsivePadding(8),
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: spacing.xs,
   },
   searchTextInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     color: '#333',
   },
   searchButton: {
     backgroundColor: '#3B82F6',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    marginLeft: 8,
+    paddingHorizontal: getResponsivePadding(16),
+    paddingVertical: getResponsivePadding(8),
+    borderRadius: borderRadius.sm,
+    marginLeft: spacing.xs,
   },
   searchButtonText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: getResponsiveFontSize(14),
     fontWeight: 'bold',
   },
   content: {
@@ -354,7 +365,7 @@ const styles = StyleSheet.create({
   bottomActions: {
     flexDirection: 'row',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: getResponsivePadding(12),
     backgroundColor: '#f8f9fa',
     borderTopWidth: 1,
     borderTopColor: '#e9ecef',
@@ -363,17 +374,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFC107',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: getResponsivePadding(20),
+    paddingVertical: getResponsivePadding(10),
+    borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: '#fff',
   },
   refreshButtonText: {
     color: '#000',
-    fontSize: 14,
+    fontSize: getResponsiveFontSize(14),
     fontWeight: 'bold',
-    marginLeft: 6,
+    marginLeft: scale(6),
   },
   bottomTabs: {
     flexDirection: 'row',
@@ -384,8 +395,8 @@ const styles = StyleSheet.create({
   tabButton: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 4,
+    paddingVertical: getResponsivePadding(12),
+    paddingHorizontal: getResponsivePadding(4),
   },
   activeTabButton: {
     backgroundColor: 'rgba(76, 175, 80, 0.2)',
@@ -394,48 +405,48 @@ const styles = StyleSheet.create({
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: scale(4),
   },
   tabLabel: {
-    fontSize: 10,
+    fontSize: getResponsiveFontSize(10),
     fontWeight: '600',
     textAlign: 'center',
   },
   badge: {
     position: 'absolute',
-    top: -8,
-    right: -12,
+    top: -scale(8),
+    right: -scale(12),
     backgroundColor: '#EF4444',
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
+    borderRadius: borderRadius.md,
+    minWidth: scale(18),
+    height: scale(18),
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: scale(4),
   },
   badgeText: {
     color: '#fff',
-    fontSize: 9,
+    fontSize: getResponsiveFontSize(9),
     fontWeight: 'bold',
   },
   emptyState: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: getResponsivePadding(32),
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
     color: '#666',
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
   },
   emptySubtext: {
-    fontSize: 14,
+    fontSize: getResponsiveFontSize(14),
     color: '#999',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: getResponsiveFontSize(20),
   },
 });
 

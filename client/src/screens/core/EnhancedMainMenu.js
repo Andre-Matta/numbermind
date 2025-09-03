@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   sidebarExpanded: {
-    width: scale(30),
+    width: scale(50),
   },
   sidebarCollapsed: {
     width: scale(30),
@@ -346,8 +346,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
-    width: scale(40),
-    height: scale(40),
+    width: scale(44),
+    height: scale(44),
     overflow: 'hidden',
   },
   sidebarButtonContent: {
@@ -366,11 +366,11 @@ const styles = StyleSheet.create({
   },
   notificationDot: {
     position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    top: scale(6),
+    right: scale(6),
+    width: scale(6),
+    height: scale(6),
+    borderRadius: scale(3),
     backgroundColor: '#f44336',
   },
   playerInfo: {
@@ -452,6 +452,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
     zIndex: 1000,
+    paddingHorizontal: getResponsivePadding(12),
+    paddingVertical: getResponsivePadding(8),
   },
   bottomLeftSection: {
     flexDirection: 'row',
@@ -489,8 +491,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.3)',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
-    minWidth: scale(105),
-    minHeight: scale(60),
+    minWidth: getResponsiveButtonSize(105),
+    minHeight: getResponsiveButtonSize(60),
     alignItems: 'center',
     elevation: 4,
     shadowColor: '#000',

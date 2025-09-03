@@ -14,7 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import FriendsService from '../services/FriendsService';
 import { ResponsiveWrapper } from './ResponsiveWrapper';
-import { useResponsiveValue } from '../utils/responsiveUtils';
+import { useResponsiveValue, getResponsivePadding, getResponsiveFontSize, borderRadius, scale } from '../utils/responsiveUtils';
 
 /**
  * UserSearch Component - Search for users and send friend requests
@@ -181,7 +181,7 @@ const UserSearch = ({ onUserPress = null }) => {
       case 'pending_outgoing':
         return (
           <View style={styles.statusBadge}>
-            <Ionicons name="hourglass" size={16} color="#FF9800" />
+            <Ionicons name="hourglass" size={getResponsiveFontSize(16)} color="#FF9800" />
             <Text style={[styles.statusText, { color: '#FF9800' }]}>Pending</Text>
           </View>
         );
@@ -189,7 +189,7 @@ const UserSearch = ({ onUserPress = null }) => {
       case 'pending_incoming':
         return (
           <View style={styles.statusBadge}>
-            <Ionicons name="mail" size={16} color="#2196F3" />
+            <Ionicons name="mail" size={getResponsiveFontSize(16)} color="#2196F3" />
             <Text style={[styles.statusText, { color: '#2196F3' }]}>Respond</Text>
           </View>
         );
@@ -245,7 +245,7 @@ const UserSearch = ({ onUserPress = null }) => {
               />
             ) : (
               <View style={[styles.defaultAvatar, { width: avatarSize, height: avatarSize }]}>
-                <Ionicons name="person" size={avatarSize * 0.6} color="#666" />
+                <Ionicons name="person" size={Math.round(avatarSize * 0.6)} color="#666" />
               </View>
             )}
             {/* Level badge */}
@@ -262,7 +262,7 @@ const UserSearch = ({ onUserPress = null }) => {
               {user.username}
             </Text>
             <View style={styles.powerContainer}>
-              <Ionicons name="shield" size={16} color="#FF9800" />
+              <Ionicons name="shield" size={getResponsiveFontSize(16)} color="#FF9800" />
               <Text style={styles.powerText}>
                 {user.power ? `${Math.floor(user.power / 1000)}K` : '0K'}
               </Text>
@@ -336,7 +336,7 @@ const UserSearch = ({ onUserPress = null }) => {
         {/* Search input */}
         <View style={styles.searchContainer}>
           <View style={[styles.searchInput, { height: inputHeight }]}>
-            <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+            <Ionicons name="search" size={getResponsiveFontSize(20)} color="#666" style={styles.searchIcon} />
             <TextInput
               ref={searchInputRef}
               style={[styles.input, { fontSize: fontSize - 2 }]}
@@ -350,7 +350,7 @@ const UserSearch = ({ onUserPress = null }) => {
             />
             {searchTerm.length > 0 && (
               <TouchableOpacity style={styles.clearButton} onPress={clearSearch}>
-                <Ionicons name="close-circle" size={20} color="#666" />
+                <Ionicons name="close-circle" size={getResponsiveFontSize(20)} color="#666" />
               </TouchableOpacity>
             )}
           </View>
@@ -398,8 +398,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   searchContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: getResponsivePadding(16),
+    paddingVertical: getResponsivePadding(12),
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
@@ -407,32 +407,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: getResponsivePadding(12),
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: scale(8),
   },
   input: {
     flex: 1,
     color: '#333',
   },
   clearButton: {
-    padding: 4,
-    marginLeft: 8,
+    padding: scale(4),
+    marginLeft: scale(8),
   },
   userItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: getResponsivePadding(16),
+    paddingVertical: getResponsivePadding(12),
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
-    borderRadius: 8,
-    marginHorizontal: 8,
-    marginVertical: 4,
+    borderRadius: borderRadius.md,
+    marginHorizontal: scale(8),
+    marginVertical: scale(4),
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: {
@@ -449,16 +449,16 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     position: 'relative',
-    marginRight: 12,
+    marginRight: scale(12),
   },
   avatar: {
-    borderRadius: 30,
+    borderRadius: borderRadius.round,
     backgroundColor: '#f0f0f0',
     borderWidth: 2,
     borderColor: '#FFD700',
   },
   defaultAvatar: {
-    borderRadius: 30,
+    borderRadius: borderRadius.round,
     backgroundColor: '#f0f0f0',
     alignItems: 'center',
     justifyContent: 'center',
@@ -470,9 +470,9 @@ const styles = StyleSheet.create({
     bottom: -2,
     right: -2,
     backgroundColor: '#3B82F6',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    borderRadius: borderRadius.sm,
+    minWidth: scale(20),
+    height: scale(20),
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
   },
   levelBadgeText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: getResponsiveFontSize(10),
     fontWeight: 'bold',
   },
   userDetails: {
@@ -489,48 +489,48 @@ const styles = StyleSheet.create({
   username: {
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 4,
+    marginBottom: scale(4),
   },
   powerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 2,
+    marginBottom: scale(2),
   },
   powerText: {
-    fontSize: 14,
+    fontSize: getResponsiveFontSize(14),
     color: '#FF9800',
     fontWeight: 'bold',
-    marginLeft: 4,
+    marginLeft: scale(4),
   },
   level: {
-    fontSize: 12,
+    fontSize: getResponsiveFontSize(12),
     color: '#666',
   },
   addFriendButton: {
     backgroundColor: '#FFC107',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
+    paddingHorizontal: getResponsivePadding(16),
+    paddingVertical: getResponsivePadding(8),
+    borderRadius: borderRadius.sm,
     borderWidth: 1,
     borderColor: '#fff',
   },
   addFriendButtonText: {
     color: '#000',
-    fontSize: 12,
+    fontSize: getResponsiveFontSize(12),
     fontWeight: 'bold',
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingHorizontal: getResponsivePadding(8),
+    paddingVertical: getResponsivePadding(4),
+    borderRadius: borderRadius.sm,
     backgroundColor: '#f0f0f0',
   },
   statusText: {
-    fontSize: 12,
+    fontSize: getResponsiveFontSize(12),
     fontWeight: 'bold',
-    marginLeft: 4,
+    marginLeft: scale(4),
   },
   disabledButton: {
     opacity: 0.6,
@@ -539,11 +539,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
+    paddingVertical: getResponsivePadding(16),
   },
   loadingText: {
-    marginLeft: 8,
-    fontSize: 14,
+    marginLeft: scale(8),
+    fontSize: getResponsiveFontSize(14),
     color: '#666',
   },
   emptyContainer: {
@@ -553,43 +553,43 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: getResponsivePadding(32),
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
     color: '#666',
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: scale(16),
+    marginBottom: scale(8),
   },
   emptySubtext: {
-    fontSize: 14,
+    fontSize: getResponsiveFontSize(14),
     color: '#999',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: getResponsiveFontSize(20),
   },
   errorState: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: getResponsivePadding(32),
   },
   errorText: {
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     color: '#f44336',
-    marginTop: 16,
-    marginBottom: 16,
+    marginTop: scale(16),
+    marginBottom: scale(16),
     textAlign: 'center',
   },
   retryButton: {
     backgroundColor: '#2196F3',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: getResponsivePadding(24),
+    paddingVertical: getResponsivePadding(12),
+    borderRadius: borderRadius.md,
   },
   retryText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     fontWeight: 'bold',
   },
   loadingState: {

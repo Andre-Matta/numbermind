@@ -12,6 +12,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import config from '../../config/config';
 import AuthService from '../../services/AuthService';
+import {
+  scale,
+  getResponsivePadding,
+  getResponsiveFontSize,
+  spacing,
+  borderRadius,
+} from '../../utils/responsiveUtils';
 
 
 export default function LeaderboardScreen({ onBack }) {
@@ -88,7 +95,7 @@ export default function LeaderboardScreen({ onBack }) {
       >
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <Ionicons name="arrow-back" size={getResponsiveFontSize(24)} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.title}>Leaderboard</Text>
           <View style={styles.placeholder} />
@@ -196,51 +203,51 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingTop: getResponsivePadding(60),
+    paddingHorizontal: getResponsivePadding(20),
+    paddingBottom: getResponsivePadding(20),
   },
   backButton: {
-    padding: 8,
+    padding: scale(8),
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderRadius: 20,
+    borderRadius: borderRadius.md,
   },
   title: {
-    fontSize: 24,
+    fontSize: getResponsiveFontSize(24),
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
     flex: 1,
   },
   placeholder: {
-    width: 40,
+    width: scale(40),
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: getResponsivePadding(20),
   },
   topPlayers: {
-    marginBottom: 30,
+    marginBottom: spacing.lg,
   },
   playerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 20,
-    borderRadius: 15,
-    marginBottom: 15,
+    padding: getResponsivePadding(20),
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.sm,
   },
   rankBadge: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: scale(50),
+    height: scale(50),
+    borderRadius: scale(25),
     backgroundColor: '#ff6b6b',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 20,
+    marginRight: spacing.md,
   },
   rankNumber: {
-    fontSize: 20,
+    fontSize: getResponsiveFontSize(20),
     fontWeight: 'bold',
     color: '#fff',
   },
@@ -248,43 +255,43 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   playerName: {
-    fontSize: 18,
+    fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 8,
+    marginBottom: scale(8),
   },
   playerStats: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.xs,
   },
   rankDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: scale(12),
+    height: scale(12),
+    borderRadius: scale(6),
   },
   playerRank: {
-    fontSize: 14,
+    fontSize: getResponsiveFontSize(14),
     color: 'rgba(255, 255, 255, 0.8)',
   },
   playerRating: {
-    fontSize: 12,
+    fontSize: getResponsiveFontSize(12),
     color: 'rgba(255, 255, 255, 0.6)',
   },
   gamesInfo: {
     alignItems: 'center',
   },
   gamesCount: {
-    fontSize: 18,
+    fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
     color: '#fff',
   },
   gamesLabel: {
-    fontSize: 12,
+    fontSize: getResponsiveFontSize(12),
     color: 'rgba(255, 255, 255, 0.6)',
   },
   comingSoon: {
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     color: 'rgba(255, 255, 255, 0.6)',
     textAlign: 'center',
     fontStyle: 'italic',
@@ -292,13 +299,13 @@ const styles = StyleSheet.create({
   categorySelector: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingHorizontal: getResponsivePadding(20),
+    marginBottom: spacing.md,
   },
   categoryButton: {
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: getResponsivePadding(15),
+    paddingVertical: getResponsivePadding(8),
+    borderRadius: borderRadius.md,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
@@ -309,7 +316,7 @@ const styles = StyleSheet.create({
   },
   categoryButtonText: {
     color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 12,
+    fontSize: getResponsiveFontSize(12),
     fontWeight: '600',
   },
   categoryButtonTextActive: {
@@ -319,30 +326,30 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 50,
+    paddingVertical: getResponsivePadding(50),
   },
   loadingText: {
     color: '#fff',
-    fontSize: 16,
-    marginTop: 15,
+    fontSize: getResponsiveFontSize(16),
+    marginTop: scale(15),
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 50,
+    paddingVertical: getResponsivePadding(50),
   },
   errorText: {
     color: '#ff6b6b',
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: spacing.sm,
   },
   retryButton: {
     backgroundColor: '#ff6b6b',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: getResponsivePadding(20),
+    paddingVertical: getResponsivePadding(10),
+    borderRadius: borderRadius.md,
   },
   retryButtonText: {
     color: '#fff',

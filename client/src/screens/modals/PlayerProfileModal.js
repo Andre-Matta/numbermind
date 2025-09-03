@@ -16,7 +16,8 @@ import {
   getResponsivePadding,
   getResponsiveFontSize,
   spacing,
-  borderRadius
+  borderRadius,
+  isTablet
 } from '../../utils/responsiveUtils';
 
 
@@ -139,16 +140,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a2e',
     borderWidth: 2,
     borderColor: '#333',
-    height: '85%',
-    width: '70%',
-    borderRadius: 15,
+    height: isTablet ? '80%' : '90%',
+    width: isTablet ? '60%' : '90%',
+    borderRadius: borderRadius.lg,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingHorizontal: getResponsivePadding(20),
+    paddingVertical: getResponsivePadding(15),
     borderBottomWidth: 1,
     borderBottomColor: '#333',
   },
@@ -173,7 +174,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#2a2a3e',
-    padding: spacing.lg,
+    padding: getResponsivePadding(20),
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: '#444',
@@ -230,7 +231,7 @@ const styles = StyleSheet.create({
   statItem: {
     width: '48%',
     backgroundColor: '#2a2a3e',
-    padding: spacing.md,
+    padding: getResponsivePadding(16),
     borderRadius: borderRadius.md,
     alignItems: 'center',
     marginBottom: spacing.sm,

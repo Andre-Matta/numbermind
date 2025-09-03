@@ -9,6 +9,13 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import {
+  scale,
+  getResponsivePadding,
+  getResponsiveFontSize,
+  spacing,
+  borderRadius,
+} from '../../utils/responsiveUtils';
 
 export default function MultiplayerSelectionScreen({ 
   onLANMultiplayer, 
@@ -39,7 +46,7 @@ export default function MultiplayerSelectionScreen({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <Ionicons name="arrow-back" size={getResponsiveFontSize(24)} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.title}>Multiplayer</Text>
           <View style={styles.placeholder} />
@@ -60,21 +67,21 @@ export default function MultiplayerSelectionScreen({
         >
           <View style={styles.optionContent}>
             <View style={styles.iconContainer}>
-              <Ionicons name="wifi" size={48} color="#fff" />
+              <Ionicons name="wifi" size={getResponsiveFontSize(48)} color="#fff" />
             </View>
             <Text style={styles.optionTitle}>Offline LAN Multiplayer</Text>
             <Text style={styles.optionSubtitle}>Play with friends on the same WiFi network - No internet required!</Text>
             <View style={styles.featuresContainer}>
               <View style={styles.featureItem}>
-                <Ionicons name="checkmark-circle" size={16} color="#28a745" />
+                <Ionicons name="checkmark-circle" size={getResponsiveFontSize(16)} color="#28a745" />
                 <Text style={styles.featureText}>Works completely offline</Text>
               </View>
               <View style={styles.featureItem}>
-                <Ionicons name="checkmark-circle" size={16} color="#28a745" />
+                <Ionicons name="checkmark-circle" size={getResponsiveFontSize(16)} color="#28a745" />
                 <Text style={styles.featureText}>No internet required</Text>
               </View>
               <View style={styles.featureItem}>
-                <Ionicons name="checkmark-circle" size={16} color="#28a745" />
+                <Ionicons name="checkmark-circle" size={getResponsiveFontSize(16)} color="#28a745" />
                 <Text style={styles.featureText}>Fast local connection</Text>
               </View>
             </View>
@@ -89,21 +96,21 @@ export default function MultiplayerSelectionScreen({
         >
           <View style={styles.optionContent}>
             <View style={styles.iconContainer}>
-              <Ionicons name="globe" size={48} color="#fff" />
+              <Ionicons name="globe" size={getResponsiveFontSize(48)} color="#fff" />
             </View>
             <Text style={styles.optionTitle}>Internet Multiplayer</Text>
             <Text style={styles.optionSubtitle}>Play with friends anywhere in the world</Text>
             <View style={styles.featuresContainer}>
               <View style={styles.featureItem}>
-                <Ionicons name="checkmark-circle" size={16} color="#28a745" />
+                <Ionicons name="checkmark-circle" size={getResponsiveFontSize(16)} color="#28a745" />
                 <Text style={styles.featureText}>Global reach</Text>
               </View>
               <View style={styles.featureItem}>
-                <Ionicons name="checkmark-circle" size={16} color="#28a745" />
+                <Ionicons name="checkmark-circle" size={getResponsiveFontSize(16)} color="#28a745" />
                 <Text style={styles.featureText}>Play anywhere</Text>
               </View>
               <View style={styles.featureItem}>
-                <Ionicons name="checkmark-circle" size={16} color="#28a745" />
+                <Ionicons name="checkmark-circle" size={getResponsiveFontSize(16)} color="#28a745" />
                 <Text style={styles.featureText}>Internet connection required</Text>
               </View>
             </View>
@@ -114,19 +121,19 @@ export default function MultiplayerSelectionScreen({
         <View style={styles.infoSection}>
           <Text style={styles.infoTitle}>How it works</Text>
           <View style={styles.infoItem}>
-            <Ionicons name="1" size={20} color="#4a90e2" />
+            <Ionicons name="1" size={getResponsiveFontSize(20)} color="#4a90e2" />
             <Text style={styles.infoText}>Choose your multiplayer type</Text>
           </View>
           <View style={styles.infoItem}>
-            <Ionicons name="2" size={20} color="#4a90e2" />
+            <Ionicons name="2" size={getResponsiveFontSize(20)} color="#4a90e2" />
             <Text style={styles.infoText}>Create or join a room</Text>
           </View>
           <View style={styles.infoItem}>
-            <Ionicons name="3" size={20} color="#4a90e2" />
+            <Ionicons name="3" size={getResponsiveFontSize(20)} color="#4a90e2" />
             <Text style={styles.infoText}>Share room code with friends</Text>
           </View>
           <View style={styles.infoItem}>
-            <Ionicons name="4" size={20} color="#4a90e2" />
+            <Ionicons name="4" size={getResponsiveFontSize(20)} color="#4a90e2" />
             <Text style={styles.infoText}>Start playing together!</Text>
           </View>
         </View>
@@ -141,40 +148,40 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    padding: 20,
+    padding: getResponsivePadding(20),
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: spacing.lg,
   },
   backButton: {
-    padding: 8,
+    padding: scale(8),
   },
   title: {
-    fontSize: 28,
+    fontSize: getResponsiveFontSize(28),
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
     flex: 1,
   },
   placeholder: {
-    width: 40,
+    width: scale(40),
   },
   descriptionContainer: {
-    marginBottom: 30,
+    marginBottom: spacing.lg,
     alignItems: 'center',
   },
   descriptionText: {
-    fontSize: 18,
+    fontSize: getResponsiveFontSize(18),
     color: '#ccc',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: getResponsiveFontSize(24),
   },
   optionButton: {
-    marginBottom: 25,
-    borderRadius: 20,
+    marginBottom: spacing.md,
+    borderRadius: borderRadius.lg,
     overflow: 'hidden',
     elevation: 5,
     shadowColor: '#000',
@@ -189,27 +196,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#6f42c1',
   },
   optionContent: {
-    padding: 25,
+    padding: getResponsivePadding(25),
     alignItems: 'center',
   },
   iconContainer: {
-    marginBottom: 15,
-    padding: 15,
+    marginBottom: scale(15),
+    padding: getResponsivePadding(15),
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 50,
+    borderRadius: borderRadius.round,
   },
   optionTitle: {
-    fontSize: 24,
+    fontSize: getResponsiveFontSize(24),
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 10,
+    marginBottom: scale(10),
     textAlign: 'center',
   },
   optionSubtitle: {
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     color: '#fff',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: spacing.sm,
     opacity: 0.9,
   },
   featuresContainer: {
@@ -218,40 +225,40 @@ const styles = StyleSheet.create({
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-    paddingHorizontal: 10,
+    marginBottom: scale(8),
+    paddingHorizontal: getResponsivePadding(10),
   },
   featureText: {
-    fontSize: 14,
+    fontSize: getResponsiveFontSize(14),
     color: '#fff',
-    marginLeft: 10,
+    marginLeft: scale(10),
     opacity: 0.9,
   },
   infoSection: {
-    marginTop: 20,
-    padding: 20,
+    marginTop: spacing.sm,
+    padding: getResponsivePadding(20),
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 15,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   infoTitle: {
-    fontSize: 20,
+    fontSize: getResponsiveFontSize(20),
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 20,
+    marginBottom: spacing.sm,
     textAlign: 'center',
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
-    paddingHorizontal: 10,
+    marginBottom: scale(15),
+    paddingHorizontal: getResponsivePadding(10),
   },
   infoText: {
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     color: '#fff',
-    marginLeft: 15,
+    marginLeft: scale(15),
     opacity: 0.9,
   },
 });

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { getResponsiveFontSize, scale, borderRadius } from '../utils/responsiveUtils';
 
 export default function NotificationBadge({ style }) {
   const { user } = useAuth();
@@ -24,20 +25,20 @@ export default function NotificationBadge({ style }) {
 const styles = StyleSheet.create({
   badge: {
     position: 'absolute',
-    top: -5,
-    right: -5,
+    top: -scale(5),
+    right: -scale(5),
     backgroundColor: '#FF5722',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    borderRadius: borderRadius.md,
+    minWidth: scale(20),
+    height: scale(20),
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: scale(4),
     zIndex: 1000,
   },
   badgeText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: getResponsiveFontSize(12),
     fontWeight: 'bold',
   },
 });

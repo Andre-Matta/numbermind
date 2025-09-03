@@ -15,6 +15,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../context/AuthContext';
+import {
+  scale,
+  getResponsivePadding,
+  getResponsiveFontSize,
+  spacing,
+  borderRadius,
+} from '../../utils/responsiveUtils';
 
 export default function LoginScreen({ onBack }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -120,7 +127,7 @@ export default function LoginScreen({ onBack }) {
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={onBack} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="white" />
+              <Ionicons name="arrow-back" size={getResponsiveFontSize(24)} color="white" />
             </TouchableOpacity>
             <Text style={styles.title}>
               {isLogin ? 'Welcome Back!' : 'Create Account'}
@@ -137,7 +144,7 @@ export default function LoginScreen({ onBack }) {
           <View style={styles.form}>
             {!isLogin && (
               <View style={styles.inputContainer}>
-                <Ionicons name="person" size={20} color="#666" style={styles.inputIcon} />
+                <Ionicons name="person" size={getResponsiveFontSize(20)} color="#666" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Username"
@@ -151,7 +158,7 @@ export default function LoginScreen({ onBack }) {
             )}
 
             <View style={styles.inputContainer}>
-              <Ionicons name="mail" size={20} color="#666" style={styles.inputIcon} />
+              <Ionicons name="mail" size={getResponsiveFontSize(20)} color="#666" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Email"
@@ -165,7 +172,7 @@ export default function LoginScreen({ onBack }) {
             </View>
 
             <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed" size={20} color="#666" style={styles.inputIcon} />
+              <Ionicons name="lock-closed" size={getResponsiveFontSize(20)} color="#666" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Password"
@@ -178,7 +185,7 @@ export default function LoginScreen({ onBack }) {
               <TouchableOpacity onPress={togglePasswordVisibility} style={styles.eyeButton}>
                 <Ionicons 
                   name={showPassword ? "eye-off" : "eye"} 
-                  size={20} 
+                  size={getResponsiveFontSize(20)} 
                   color="#666" 
                 />
               </TouchableOpacity>
@@ -186,7 +193,7 @@ export default function LoginScreen({ onBack }) {
 
             {!isLogin && (
               <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed" size={20} color="#666" style={styles.inputIcon} />
+                <Ionicons name="lock-closed" size={getResponsiveFontSize(20)} color="#666" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Confirm Password"
@@ -199,7 +206,7 @@ export default function LoginScreen({ onBack }) {
                 <TouchableOpacity onPress={toggleConfirmPasswordVisibility} style={styles.eyeButton}>
                   <Ionicons 
                     name={showConfirmPassword ? "eye-off" : "eye"} 
-                    size={20} 
+                    size={getResponsiveFontSize(20)} 
                     color="#666" 
                   />
                 </TouchableOpacity>
@@ -246,32 +253,32 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 40,
+    paddingHorizontal: getResponsivePadding(20),
+    paddingTop: getResponsivePadding(60),
+    paddingBottom: getResponsivePadding(40),
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: spacing.lg,
   },
   backButton: {
     position: 'absolute',
     left: 0,
     top: 0,
-    padding: 10,
+    padding: scale(10),
   },
   title: {
-    fontSize: 28,
+    fontSize: getResponsiveFontSize(28),
     fontWeight: 'bold',
     color: 'white',
-    marginBottom: 10,
+    marginBottom: spacing.xs,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: getResponsiveFontSize(22),
   },
   form: {
     flex: 1,
@@ -280,30 +287,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 12,
-    marginBottom: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 4,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.sm,
+    paddingHorizontal: getResponsivePadding(16),
+    paddingVertical: getResponsivePadding(4),
   },
   inputIcon: {
-    marginRight: 12,
+    marginRight: scale(12),
   },
   input: {
     flex: 1,
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     color: '#333',
-    paddingVertical: 16,
+    paddingVertical: getResponsivePadding(16),
   },
   eyeButton: {
-    padding: 8,
+    padding: scale(8),
   },
   submitButton: {
     backgroundColor: '#4CAF50',
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: borderRadius.md,
+    paddingVertical: getResponsivePadding(16),
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 20,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
@@ -315,16 +322,16 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     color: 'white',
-    fontSize: 18,
+    fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
   },
   toggleButton: {
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: getResponsivePadding(16),
   },
   toggleText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     textDecorationLine: 'underline',
   },
 });

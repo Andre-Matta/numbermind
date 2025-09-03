@@ -14,6 +14,7 @@ import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import config from '../config/config';
 import { useAuth } from '../context/AuthContext';
+import { getResponsivePadding, getResponsiveFontSize, borderRadius, scale, isTablet } from '../utils/responsiveUtils';
 
 export default function Inbox({ visible, onClose, onMessagePress }) {
   const { user, refreshUserData } = useAuth();
@@ -225,7 +226,7 @@ export default function Inbox({ visible, onClose, onMessagePress }) {
               >
                 <Ionicons 
                   name="refresh" 
-                  size={20} 
+                  size={getResponsiveFontSize(20)} 
                   color={refreshing ? "#666" : "#fff"} 
                 />
               </TouchableOpacity>
@@ -234,14 +235,14 @@ export default function Inbox({ visible, onClose, onMessagePress }) {
                   style={styles.headerButton}
                   onPress={markAllAsRead}
                 >
-                  <Ionicons name="checkmark-done" size={20} color="#fff" />
+                  <Ionicons name="checkmark-done" size={getResponsiveFontSize(20)} color="#fff" />
                 </TouchableOpacity>
               )}
               <TouchableOpacity
                 style={styles.headerButton}
                 onPress={onClose}
               >
-                <Ionicons name="close" size={20} color="#fff" />
+                <Ionicons name="close" size={getResponsiveFontSize(20)} color="#fff" />
               </TouchableOpacity>
             </View>
           </View>
@@ -259,7 +260,7 @@ export default function Inbox({ visible, onClose, onMessagePress }) {
           >
             {messages.length === 0 ? (
               <View style={styles.emptyContainer}>
-                <Ionicons name="mail-open" size={64} color="#666" />
+                <Ionicons name="mail-open" size={getResponsiveFontSize(64)} color="#666" />
                 <Text style={styles.emptyText}>No messages yet</Text>
                 <Text style={styles.emptySubtext}>
                   You'll receive game invites, friend requests, and system messages here
@@ -290,17 +291,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a2e',
     borderWidth: 2,
     borderColor: '#333',
-    height: '85%',
-    width: '70%',
-    borderRadius: 15,
+    height: isTablet ? '80%' : '90%',
+    width: isTablet ? '60%' : '90%',
+    borderRadius: borderRadius.lg,
   },
 
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingHorizontal: getResponsivePadding(20),
+    paddingVertical: getResponsivePadding(15),
     borderBottomWidth: 1,
     borderBottomColor: '#333',
   },
@@ -309,40 +310,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: getResponsiveFontSize(24),
     fontWeight: 'bold',
     color: '#fff',
   },
   unreadBadge: {
     backgroundColor: '#FF5722',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    marginLeft: 10,
-    minWidth: 20,
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: getResponsivePadding(8),
+    paddingVertical: getResponsivePadding(2),
+    marginLeft: scale(10),
+    minWidth: scale(20),
     alignItems: 'center',
   },
   unreadBadgeText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: getResponsiveFontSize(12),
     fontWeight: 'bold',
   },
   headerActions: {
     flexDirection: 'row',
   },
   headerButton: {
-    marginLeft: 15,
-    padding: 5,
+    marginLeft: scale(15),
+    padding: scale(5),
   },
   messagesList: {
     flex: 1,
   },
   messageItem: {
     backgroundColor: '#2a2a3e',
-    marginHorizontal: 15,
-    marginVertical: 5,
-    borderRadius: 12,
-    padding: 15,
+    marginHorizontal: scale(15),
+    marginVertical: scale(5),
+    borderRadius: borderRadius.md,
+    padding: getResponsivePadding(15),
     borderLeftWidth: 4,
     borderLeftColor: '#4CAF50',
     borderWidth: 1,
@@ -357,13 +358,13 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: scale(40),
+    height: scale(40),
+    borderRadius: borderRadius.round,
     backgroundColor: '#3a3a4e',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: scale(12),
     borderWidth: 1,
     borderColor: '#555',
   },
@@ -374,54 +375,54 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: scale(4),
   },
   messageTitle: {
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     fontWeight: 'bold',
     color: '#fff',
     flex: 1,
-    marginRight: 10,
+    marginRight: scale(10),
   },
   messageTime: {
-    fontSize: 12,
+    fontSize: getResponsiveFontSize(12),
     color: '#888',
   },
   messageFrom: {
-    fontSize: 12,
+    fontSize: getResponsiveFontSize(12),
     color: '#ccc',
-    marginBottom: 6,
+    marginBottom: scale(6),
   },
   messageBody: {
-    fontSize: 14,
+    fontSize: getResponsiveFontSize(14),
     color: '#ccc',
-    lineHeight: 20,
+    lineHeight: getResponsiveFontSize(20),
   },
   unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: scale(8),
+    height: scale(8),
+    borderRadius: scale(4),
     backgroundColor: '#FF9800',
-    marginLeft: 8,
-    marginTop: 4,
+    marginLeft: scale(8),
+    marginTop: scale(4),
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: getResponsivePadding(60),
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
     color: '#666',
-    marginTop: 16,
+    marginTop: scale(16),
   },
   emptySubtext: {
-    fontSize: 14,
+    fontSize: getResponsiveFontSize(14),
     color: '#888',
     textAlign: 'center',
-    marginTop: 8,
-    paddingHorizontal: 40,
+    marginTop: scale(8),
+    paddingHorizontal: getResponsivePadding(40),
   },
 });

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Dimensions, Image } from 'react-native';
+import { scale, getResponsiveFontSize } from '../utils/responsiveUtils';
 
 const { width, height } = Dimensions.get('window');
 
@@ -39,7 +40,7 @@ const FloatingBubbles = () => {
       id: bubbleCounter.current++,
       x: x,
       y: y,
-      size: Math.random() * 40 + 30,
+      size: Math.random() * scale(40) + scale(30),
       speed: Math.random() * 0.8 + 0.3,
       direction: direction,
       content: Math.random() > 0.5 ? Math.floor(Math.random() * 10).toString() : '?',
@@ -70,10 +71,10 @@ const FloatingBubbles = () => {
         
         // Remove bubbles that have exited the screen
         newBubbles = newBubbles.filter(bubble => 
-          bubble.x > -100 && 
-          bubble.x < width + 100 && 
-          bubble.y > -100 && 
-          bubble.y < height + 100
+          bubble.x > -scale(100) && 
+          bubble.x < width + scale(100) && 
+          bubble.y > -scale(100) && 
+          bubble.y < height + scale(100)
         );
         
         // Add new bubbles to maintain count
@@ -149,7 +150,7 @@ const FloatingBubbles = () => {
           >
             <Text
               style={{
-                fontSize: bubble.size * 0.4,
+                fontSize: Math.max(getResponsiveFontSize(10), bubble.size * 0.4),
                 fontWeight: 'bold',
                 color: '#fff',
                 textShadowColor: 'rgba(0, 0, 0, 0.8)',

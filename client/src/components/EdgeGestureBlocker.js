@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, StyleSheet, PanResponder, Dimensions } from 'react-native';
+import { scale } from '../utils/responsiveUtils';
 
 const { width, height } = Dimensions.get('window');
-const EDGE_WIDTH = 30; // Width of edge zones to block
+const EDGE_WIDTH = scale(30); // Width of edge zones to block
 
 const EdgeGestureBlocker = ({ children }) => {
   // Create PanResponder for left edge

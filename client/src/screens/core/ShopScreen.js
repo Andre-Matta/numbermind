@@ -13,6 +13,15 @@ import { Ionicons } from '@expo/vector-icons';
 import config from '../../config/config';
 import AuthService from '../../services/AuthService';
 import { useData } from '../../context/DataContext';
+import {
+  scale,
+  getResponsivePadding,
+  getResponsiveFontSize,
+  spacing,
+  borderRadius,
+  isTablet,
+  responsiveWidth,
+} from '../../utils/responsiveUtils';
 
 
 export default function Shop({ onBack }) {
@@ -114,7 +123,7 @@ export default function Shop({ onBack }) {
       >
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <Ionicons name="arrow-back" size={getResponsiveFontSize(24)} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.title}>Shop</Text>
           <View style={styles.placeholder} />
@@ -122,7 +131,7 @@ export default function Shop({ onBack }) {
 
         <ScrollView style={styles.content}>
           <View style={styles.coinsDisplay}>
-            <Ionicons name="diamond-outline" size={24} color="#ffd700" />
+            <Ionicons name="diamond-outline" size={getResponsiveFontSize(24)} color="#ffd700" />
             <Text style={styles.coinsText}>{userData?.coins || 0} Coins</Text>
           </View>
 
@@ -207,52 +216,52 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingTop: getResponsivePadding(60),
+    paddingHorizontal: getResponsivePadding(20),
+    paddingBottom: getResponsivePadding(20),
   },
   backButton: {
-    padding: 8,
+    padding: scale(8),
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderRadius: 20,
+    borderRadius: borderRadius.md,
   },
   title: {
-    fontSize: 24,
+    fontSize: getResponsiveFontSize(24),
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
     flex: 1,
   },
   placeholder: {
-    width: 40,
+    width: scale(40),
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: getResponsivePadding(20),
   },
   coinsDisplay: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 20,
-    borderRadius: 15,
-    marginBottom: 30,
-    gap: 10,
+    padding: getResponsivePadding(20),
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.lg,
+    gap: spacing.xs,
   },
   coinsText: {
-    fontSize: 20,
+    fontSize: getResponsiveFontSize(20),
     fontWeight: 'bold',
     color: '#fff',
   },
   categorySection: {
-    marginBottom: 30,
+    marginBottom: spacing.lg,
   },
   categoryTitle: {
-    fontSize: 20,
+    fontSize: getResponsiveFontSize(20),
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 15,
+    marginBottom: spacing.sm,
     textAlign: 'center',
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -261,26 +270,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 15,
+    gap: spacing.xs,
   },
   shopItem: {
-    width: '30%',
+    width: isTablet ? '30%' : '47%',
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 15,
-    borderRadius: 15,
-    marginBottom: 15,
+    padding: getResponsivePadding(15),
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.sm,
   },
   itemInfo: {
-    marginBottom: 10,
+    marginBottom: scale(10),
   },
   itemName: {
-    fontSize: 18,
+    fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 5,
+    marginBottom: scale(5),
   },
   itemType: {
-    fontSize: 14,
+    fontSize: getResponsiveFontSize(14),
     color: 'rgba(255, 255, 255, 0.6)',
     textTransform: 'capitalize',
   },
@@ -288,16 +297,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   itemPrice: {
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     color: '#ffd700',
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: scale(10),
   },
   buyButton: {
     backgroundColor: '#28a745',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: getResponsivePadding(20),
+    paddingVertical: getResponsivePadding(10),
+    borderRadius: borderRadius.md,
   },
   buyButtonDisabled: {
     backgroundColor: '#6c757d',
@@ -308,7 +317,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   comingSoon: {
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     color: 'rgba(255, 255, 255, 0.6)',
     textAlign: 'center',
     fontStyle: 'italic',
@@ -317,61 +326,61 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 50,
+    paddingVertical: getResponsivePadding(50),
   },
   loadingText: {
     color: '#fff',
-    fontSize: 16,
-    marginTop: 15,
+    fontSize: getResponsiveFontSize(16),
+    marginTop: scale(15),
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 50,
+    paddingVertical: getResponsivePadding(50),
   },
   errorText: {
     color: '#ff6b6b',
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: spacing.sm,
   },
   retryButton: {
     backgroundColor: '#ff6b6b',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: getResponsivePadding(20),
+    paddingVertical: getResponsivePadding(10),
+    borderRadius: borderRadius.md,
   },
   retryButtonText: {
     color: '#fff',
     fontWeight: 'bold',
   },
   itemDescription: {
-    fontSize: 12,
+    fontSize: getResponsiveFontSize(12),
     color: 'rgba(255, 255, 255, 0.7)',
-    marginBottom: 5,
+    marginBottom: scale(5),
     fontStyle: 'italic',
   },
   discountBadge: {
     backgroundColor: '#ff6b6b',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-    marginTop: 5,
+    paddingHorizontal: getResponsivePadding(8),
+    paddingVertical: getResponsivePadding(4),
+    borderRadius: borderRadius.md,
+    marginTop: scale(5),
   },
   discountText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: getResponsiveFontSize(10),
     fontWeight: 'bold',
   },
   priceContainer: {
     alignItems: 'flex-end',
-    marginBottom: 10,
+    marginBottom: scale(10),
   },
   originalPrice: {
-    fontSize: 12,
+    fontSize: getResponsiveFontSize(12),
     color: 'rgba(255, 255, 255, 0.5)',
     textDecorationLine: 'line-through',
-    marginBottom: 2,
+    marginBottom: scale(2),
   },
 });

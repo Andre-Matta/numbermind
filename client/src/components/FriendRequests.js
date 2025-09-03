@@ -13,7 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import FriendsService from '../services/FriendsService';
 import { ResponsiveWrapper } from './ResponsiveWrapper';
-import { useResponsiveValue } from '../utils/responsiveUtils';
+import { useResponsiveValue, getResponsivePadding, getResponsiveFontSize, borderRadius, scale } from '../utils/responsiveUtils';
 
 /**
  * FriendRequests Component - Displays pending friend requests
@@ -217,7 +217,7 @@ const FriendRequests = ({ refreshTrigger = 0 }) => {
               />
             ) : (
               <View style={[styles.defaultAvatar, { width: avatarSize, height: avatarSize }]}>
-                <Ionicons name="person" size={avatarSize * 0.6} color="#666" />
+                <Ionicons name="person" size={Math.round(avatarSize * 0.6)} color="#666" />
               </View>
             )}
           </View>
@@ -252,7 +252,7 @@ const FriendRequests = ({ refreshTrigger = 0 }) => {
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <>
-                <Ionicons name="checkmark" size={16} color="#fff" />
+                <Ionicons name="checkmark" size={getResponsiveFontSize(16)} color="#fff" />
                 <Text style={styles.acceptText}>Accept</Text>
               </>
             )}
@@ -267,7 +267,7 @@ const FriendRequests = ({ refreshTrigger = 0 }) => {
             onPress={() => declineRequest(request.id, request.from.username)}
             disabled={processingRequest === request.id}
           >
-            <Ionicons name="close" size={16} color="#666" />
+            <Ionicons name="close" size={getResponsiveFontSize(16)} color="#666" />
           </TouchableOpacity>
         </View>
       </View>
@@ -351,8 +351,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: getResponsivePadding(16),
+    paddingVertical: getResponsivePadding(12),
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
@@ -363,14 +363,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   avatarContainer: {
-    marginRight: 12,
+    marginRight: scale(12),
   },
   avatar: {
-    borderRadius: 25,
+    borderRadius: borderRadius.md,
     backgroundColor: '#f0f0f0',
   },
   defaultAvatar: {
-    borderRadius: 25,
+    borderRadius: borderRadius.md,
     backgroundColor: '#f0f0f0',
     alignItems: 'center',
     justifyContent: 'center',
@@ -381,20 +381,20 @@ const styles = StyleSheet.create({
   username: {
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 2,
+    marginBottom: scale(2),
   },
   requestText: {
-    fontSize: 14,
+    fontSize: getResponsiveFontSize(14),
     color: '#666',
-    marginBottom: 2,
+    marginBottom: scale(2),
   },
   timeAgo: {
-    fontSize: 12,
+    fontSize: getResponsiveFontSize(12),
     color: '#999',
-    marginBottom: 2,
+    marginBottom: scale(2),
   },
   level: {
-    fontSize: 11,
+    fontSize: getResponsiveFontSize(11),
     color: '#999',
   },
   actionButtons: {
@@ -405,26 +405,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#4CAF50',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
+    paddingHorizontal: getResponsivePadding(12),
+    paddingVertical: getResponsivePadding(8),
+    borderRadius: borderRadius.sm,
     marginRight: 8,
     minWidth: 80,
     justifyContent: 'center',
   },
   acceptText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: getResponsiveFontSize(14),
     fontWeight: 'bold',
-    marginLeft: 4,
+    marginLeft: scale(4),
   },
   declineButton: {
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#f0f0f0',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
+    paddingHorizontal: getResponsivePadding(12),
+    paddingVertical: getResponsivePadding(8),
+    borderRadius: borderRadius.sm,
     minWidth: 40,
   },
   disabledButton: {

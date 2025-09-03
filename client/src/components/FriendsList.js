@@ -13,7 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import FriendsService from '../services/FriendsService';
 import { ResponsiveWrapper } from './ResponsiveWrapper';
-import { useResponsiveValue } from '../utils/responsiveUtils';
+import { useResponsiveValue, getResponsivePadding, getResponsiveFontSize, spacing, borderRadius, scale } from '../utils/responsiveUtils';
 
 /**
  * FriendsList Component - Displays user's friends with online status
@@ -252,7 +252,7 @@ const FriendsList = ({
               />
             ) : (
               <View style={[styles.defaultAvatar, { width: avatarSize, height: avatarSize }]}>
-                <Ionicons name="person" size={avatarSize * 0.6} color="#666" />
+                <Ionicons name="person" size={Math.round(avatarSize * 0.6)} color="#666" />
               </View>
             )}
             {/* Level badge */}
@@ -269,7 +269,7 @@ const FriendsList = ({
               {friend.username}
             </Text>
             <View style={styles.powerContainer}>
-              <Ionicons name="shield" size={16} color="#FF9800" />
+              <Ionicons name="shield" size={getResponsiveFontSize(16)} color="#FF9800" />
               <Text style={styles.powerText}>
                 {friend.power ? `${Math.floor(friend.power / 1000)}K` : '0K'}
               </Text>
@@ -385,14 +385,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: getResponsivePadding(16),
+    paddingVertical: getResponsivePadding(12),
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
-    borderRadius: 8,
-    marginHorizontal: 8,
-    marginVertical: 4,
+    borderRadius: borderRadius.md,
+    marginHorizontal: scale(8),
+    marginVertical: scale(4),
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: {
@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     position: 'relative',
-    marginRight: 12,
+    marginRight: scale(12),
   },
   avatar: {
     borderRadius: 30,
@@ -430,9 +430,9 @@ const styles = StyleSheet.create({
     bottom: -2,
     right: -2,
     backgroundColor: '#3B82F6',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    borderRadius: borderRadius.sm,
+    minWidth: scale(20),
+    height: scale(20),
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
   },
   levelBadgeText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: getResponsiveFontSize(10),
     fontWeight: 'bold',
   },
   friendDetails: {
@@ -449,45 +449,45 @@ const styles = StyleSheet.create({
   friendName: {
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 4,
+    marginBottom: scale(4),
   },
   powerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 2,
+    marginBottom: scale(2),
   },
   powerText: {
-    fontSize: 14,
+    fontSize: getResponsiveFontSize(14),
     color: '#FF9800',
     fontWeight: 'bold',
-    marginLeft: 4,
+    marginLeft: scale(4),
   },
   statusText: {
-    fontSize: 12,
+    fontSize: getResponsiveFontSize(12),
     fontWeight: '500',
   },
   addFriendButton: {
     backgroundColor: '#FFC107',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
+    paddingHorizontal: getResponsivePadding(16),
+    paddingVertical: getResponsivePadding(8),
+    borderRadius: borderRadius.sm,
     borderWidth: 1,
     borderColor: '#fff',
   },
   addFriendButtonText: {
     color: '#000',
-    fontSize: 12,
+    fontSize: getResponsiveFontSize(12),
     fontWeight: 'bold',
   },
   loadingFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
+    paddingVertical: getResponsivePadding(16),
   },
   loadingText: {
-    marginLeft: 8,
-    fontSize: 14,
+    marginLeft: scale(8),
+    fontSize: getResponsiveFontSize(14),
     color: '#666',
   },
   emptyContainer: {
@@ -497,43 +497,43 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: getResponsivePadding(32),
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
     color: '#666',
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: scale(16),
+    marginBottom: scale(8),
   },
   emptySubtext: {
-    fontSize: 14,
+    fontSize: getResponsiveFontSize(14),
     color: '#999',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: getResponsiveFontSize(20),
   },
   errorState: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: getResponsivePadding(32),
   },
   errorText: {
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     color: '#f44336',
-    marginTop: 16,
-    marginBottom: 16,
+    marginTop: scale(16),
+    marginBottom: scale(16),
     textAlign: 'center',
   },
   retryButton: {
     backgroundColor: '#2196F3',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: getResponsivePadding(24),
+    paddingVertical: getResponsivePadding(12),
+    borderRadius: borderRadius.md,
   },
   retryText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     fontWeight: 'bold',
   },
   loadingState: {
