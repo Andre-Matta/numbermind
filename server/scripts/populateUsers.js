@@ -109,9 +109,9 @@ const sampleUsers = [
     }
   },
   {
-    username: 'NumberNinja',
-    email: 'ninja@numbermind.com',
-    password: 'Password123',
+    username: 'Jimmy',
+    email: 'Jimmyneutron@gmail.com',
+    password: 'Pass142',
     coins: 2800,
     gameStats: {
       level: 15,
