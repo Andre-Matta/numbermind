@@ -41,10 +41,6 @@ const FriendsModal = ({ visible, onClose }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Responsive values
-  const modalWidth = useResponsiveValue({ mobile: '95%', tablet: '80%', desktop: '70%' });
-  const modalHeight = useResponsiveValue({ mobile: '90%', tablet: '85%', desktop: '80%' });
-
   /**
    * Load friend statistics
    */
@@ -195,7 +191,7 @@ const FriendsModal = ({ visible, onClose }) => {
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={[styles.modal, { width: modalWidth, height: modalHeight }]}>
+        <View style={styles.modal}>
           {/* Header with purple gradient */}
           <LinearGradient
             colors={['#8B5CF6', '#7C3AED', '#6D28D9']}
@@ -286,6 +282,8 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.25,
     shadowRadius: 10,
+    height: '85%',
+    width: '70%',
   },
   header: {
     paddingVertical: 16,

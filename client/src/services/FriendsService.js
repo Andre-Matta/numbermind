@@ -123,7 +123,7 @@ class FriendsService {
 
       const body = userId ? { userId } : { username };
 
-      const response = await fetch(`${config.API_BASE_URL}/friends/request`, {
+      const response = await fetch(`${config.API_BASE_URL}/users/friend-request`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -189,7 +189,7 @@ class FriendsService {
         throw new Error('Authentication required');
       }
 
-      const response = await fetch(`${config.API_BASE_URL}/friends/request/${requestId}`, {
+      const response = await fetch(`${config.API_BASE_URL}/users/friend-request/${requestId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -281,7 +281,7 @@ class FriendsService {
         throw new Error('Authentication required');
       }
 
-      const response = await fetch(`${config.API_BASE_URL}/friends/requests`, {
+      const response = await fetch(`${config.API_BASE_URL}/users/friend-requests`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -339,7 +339,7 @@ class FriendsService {
         params.append('search', search);
       }
 
-      const response = await fetch(`${config.API_BASE_URL}/friends?${params}`, {
+      const response = await fetch(`${config.API_BASE_URL}/users/friends?${params}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -377,7 +377,7 @@ class FriendsService {
         throw new Error('Authentication required');
       }
 
-      const response = await fetch(`${config.API_BASE_URL}/friends/${friendId}`, {
+      const response = await fetch(`${config.API_BASE_URL}/users/friend/${friendId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -458,7 +458,7 @@ class FriendsService {
         limit: limit.toString(),
       });
 
-      const url = `${config.API_BASE_URL}/friends/search?${params}`;
+      const url = `${config.API_BASE_URL}/users/search?${params}`;
       console.log('FriendsService - Search URL:', url);
       console.log('FriendsService - Search params:', Object.fromEntries(params));
       
@@ -510,7 +510,7 @@ class FriendsService {
         throw new Error('Authentication required');
       }
 
-      const response = await fetch(`${config.API_BASE_URL}/friends/stats`, {
+      const response = await fetch(`${config.API_BASE_URL}/users/friend-stats`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
