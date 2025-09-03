@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import NetworkService from '../../services/NetworkService';
+import AuthService from '../../services/AuthService';
 import { useData } from '../../context/DataContext';
 import {
   scale,
@@ -58,6 +59,7 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittingNumber, setIsSubmittingNumber] = useState(false);
   const [hasSubmittedNumber, setHasSubmittedNumber] = useState(false);
+  const myUserIdRef = useRef(null);
   const [selectedSkin, setSelectedSkin] = useState('default');
   const [showSkinSelector, setShowSkinSelector] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
@@ -94,6 +96,14 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     };
     
     initializeGame();
+    // Capture my user id once
+    try {
+      const me = AuthService.getCurrentUser && AuthService.getCurrentUser();
+      myUserIdRef.current = me?._id || me?.id || null;
+      console.log('👤 My user id set to:', myUserIdRef.current);
+    } catch (e) {
+      console.log('⚠️ Unable to read current user id');
+    }
     
     // Handle hardware back button
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -371,15 +381,21 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
       console.log('✅ Game state transitioning from', currentGameStateRef.current, 'to playing');
       setGameStateWithRef('playing');
       
-      // Fix turn detection - compare with playerId properly
-      const isMyTurnNow = data.currentTurn === NetworkService.playerId;
-      console.log('🎯 Current turn:', data.currentTurn, 'Player ID:', NetworkService.playerId, 'Is my turn:', isMyTurnNow);
+      // Fix turn detection - compare with AUTH USER ID (server sends userId)
+      let myUserId = myUserIdRef.current;
+      if (!myUserId) {
+        const me = AuthService.getCurrentUser && AuthService.getCurrentUser();
+        myUserId = me?._id || me?.id || null;
+        myUserIdRef.current = myUserId;
+      }
+      const isMyTurnNow = String(data.currentTurn || '') === String(myUserId || '');
+      console.log('🎯 Current turn:', data.currentTurn, 'My User ID:', myUserId, 'Is my turn:', isMyTurnNow);
       console.log('🎯 Turn comparison:', {
         currentTurn: data.currentTurn,
-        playerId: NetworkService.playerId,
+        myUserId,
         currentTurnType: typeof data.currentTurn,
-        playerIdType: typeof NetworkService.playerId,
-        isEqual: data.currentTurn === NetworkService.playerId
+        myUserIdType: typeof myUserId,
+        isEqual: String(data.currentTurn) === String(myUserId)
       });
       setIsMyTurn(isMyTurnNow);
     } else {
@@ -403,8 +419,17 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
       
       setOpponentGuesses(prev => [...prev, opponentGuess]);
       
-      // Switch turn to current player
-      setIsMyTurn(true);
+      // Update turn: it's my turn if the other player submitted the guess
+      let myUserId = myUserIdRef.current;
+      if (!myUserId) {
+        const me = AuthService.getCurrentUser && AuthService.getCurrentUser();
+        myUserId = me?._id || me?.id || null;
+        myUserIdRef.current = myUserId;
+      }
+      const submitterId = data?.guess?.playerId;
+      const itsMyTurnNow = String(submitterId || '') !== String(myUserId || '');
+      console.log('🔄 guessSubmitted turn calc:', { submitterId, myUserId, itsMyTurnNow, currentTurn: data.currentTurn });
+      setIsMyTurn(itsMyTurnNow);
       
       console.log('🎯 Opponent guess received:', opponentGuess);
       console.log('🔄 Turn switched to current player');
