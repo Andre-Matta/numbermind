@@ -595,7 +595,7 @@ const setupSocketIO = (server) => {
           
           io.to(roomId).emit('gameStarted', {
             roomId,
-            currentTurn: game.currentTurn,
+            currentTurn: game.currentTurn ? game.currentTurn.toString() : game.currentTurn,
             gameMode: game.gameMode
           });
 
@@ -742,7 +742,7 @@ const setupSocketIO = (server) => {
         io.to(roomId).emit('guessSubmitted', {
           roomId,
           guess: guessData,
-          currentTurn: game.currentTurn,
+          currentTurn: game.currentTurn ? game.currentTurn.toString() : game.currentTurn,
           gameState: game.gameState
         });
 
