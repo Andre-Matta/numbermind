@@ -16,12 +16,31 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import NetworkService from '../../services/NetworkService';
 import { useData } from '../../context/DataContext';
+import {
+  scale,
+  verticalScale,
+  moderateScale,
+  responsiveWidth,
+  responsiveHeight,
+  getResponsivePadding,
+  getResponsiveMargin,
+  getResponsiveFontSize,
+  getResponsiveButtonSize,
+  getResponsiveContainerWidth,
+  getSafeAreaPadding,
+  spacing,
+  borderRadius,
+  getScreenDimensions,
+} from '../../utils/responsiveUtils';
 
 const { width, height } = Dimensions.get('window');
 
 export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
   const { userSkins } = useData();
   const [gameState, setGameState] = useState('waiting'); // waiting, setup, playing, finished
+  
+  // Get screen dimensions for responsive design
+  const screenDimensions = getScreenDimensions();
   
   // Custom setter to keep ref in sync
   const setGameStateWithRef = (newState) => {
@@ -83,11 +102,18 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
       return true; // Prevent default behavior
     });
     
+    // Handle screen orientation changes
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      // Force re-render when orientation changes
+      setGameState(prevState => prevState);
+    });
+    
     return () => {
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
       backHandler.remove();
+      subscription?.remove();
       // Clean up NetworkService event handlers
       NetworkService.onGameStart = null;
       NetworkService.onGuessReceived = null;
@@ -731,10 +757,10 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
       </View>
       <View style={styles.actionRow}>
         <TouchableOpacity style={styles.deleteButton} onPress={() => handleDelete(isSecret)}>
-          <Ionicons name="backspace" size={24} color="#fff" />
+          <Ionicons name="backspace" size={getResponsiveFontSize(24)} color="#fff" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.clearButton} onPress={() => handleClear(isSecret)}>
-          <Ionicons name="refresh" size={24} color="#fff" />
+          <Ionicons name="refresh" size={getResponsiveFontSize(24)} color="#fff" />
         </TouchableOpacity>
         {isSecret && (
           <TouchableOpacity 
@@ -790,7 +816,7 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
         <View style={styles.waitingContainer}>
           {connectionError ? (
             <View style={styles.errorContainer}>
-              <Ionicons name="warning" size={48} color="#dc3545" />
+              <Ionicons name="warning" size={getResponsiveFontSize(48)} color="#dc3545" />
               <Text style={styles.errorText}>Connection Error</Text>
               <Text style={styles.errorDescription}>{connectionError}</Text>
               <TouchableOpacity 
@@ -838,7 +864,7 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
       <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <Ionicons name="arrow-back" size={getResponsiveFontSize(24)} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.title}>Setup Game</Text>
           <View style={styles.placeholder} />
@@ -886,7 +912,7 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={getResponsiveFontSize(24)} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.title}>Multiplayer Game</Text>
         <View style={styles.placeholder} />
@@ -930,49 +956,49 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    paddingTop: 40,
+    padding: getResponsivePadding(20),
+    paddingTop: getSafeAreaPadding(20),
   },
   backButton: {
-    padding: 8,
+    padding: scale(8),
   },
   title: {
-    fontSize: 24,
+    fontSize: getResponsiveFontSize(24),
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
     flex: 1,
   },
   placeholder: {
-    width: 40,
+    width: scale(40),
   },
   roomInfo: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: getResponsiveMargin(20),
   },
   roomId: {
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     color: '#4a90e2',
-    marginBottom: 5,
+    marginBottom: scale(5),
   },
   turnIndicator: {
-    fontSize: 18,
+    fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
     color: '#fff',
   },
   opponentStatus: {
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    margin: 20,
-    padding: 15,
-    borderRadius: 15,
+    margin: getResponsiveMargin(20),
+    padding: getResponsivePadding(15),
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   opponentLabel: {
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 10,
+    marginBottom: scale(10),
   },
   typingIndicator: {
     flexDirection: 'row',
@@ -981,28 +1007,28 @@ const styles = StyleSheet.create({
   },
   typingText: {
     color: '#28a745',
-    fontSize: 14,
+    fontSize: getResponsiveFontSize(14),
   },
   typingInput: {
     color: '#6c757d',
-    fontSize: 12,
+    fontSize: getResponsiveFontSize(12),
     fontStyle: 'italic',
   },
   notTypingText: {
     color: '#6c757d',
-    fontSize: 14,
+    fontSize: getResponsiveFontSize(14),
   },
   gameArea: {
     flex: 1,
-    padding: 20,
+    padding: getResponsivePadding(20),
   },
   inputSection: {
-    marginBottom: 30,
+    marginBottom: getResponsiveMargin(30),
   },
   inputLabel: {
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
     color: '#fff',
-    marginBottom: 10,
+    marginBottom: scale(10),
     textAlign: 'center',
   },
   inputContainer: {
@@ -1014,12 +1040,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderWidth: 2,
     borderColor: '#4a90e2',
-    borderRadius: 15,
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    fontSize: 18,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: getResponsivePadding(20),
+    paddingVertical: getResponsivePadding(15),
+    fontSize: getResponsiveFontSize(18),
     color: '#fff',
-    marginRight: 10,
+    marginRight: scale(10),
   },
   inputDisabled: {
     borderColor: '#6c757d',
@@ -1027,10 +1053,10 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: '#28a745',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderRadius: 15,
-    minWidth: 100,
+    paddingHorizontal: getResponsivePadding(20),
+    paddingVertical: getResponsivePadding(15),
+    borderRadius: borderRadius.lg,
+    minWidth: scale(100),
     alignItems: 'center',
   },
   submitButtonDisabled: {
@@ -1039,331 +1065,330 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: getResponsiveFontSize(16),
   },
   guessesContainer: {
     flex: 1,
   },
   guessSection: {
-    marginBottom: 20,
+    marginBottom: getResponsiveMargin(20),
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 10,
+    marginBottom: scale(10),
     textAlign: 'center',
   },
   guessList: {
-    maxHeight: 250,
+    maxHeight: responsiveHeight(30), // 30% of screen height
   },
   noGuesses: {
     color: '#6c757d',
     textAlign: 'center',
     fontStyle: 'italic',
-    padding: 20,
+    padding: getResponsivePadding(20),
   },
   guessItem: {
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    padding: 8,
-    borderRadius: 8,
-    marginBottom: 6,
+    padding: scale(8),
+    borderRadius: borderRadius.md,
+    marginBottom: scale(6),
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   guessText: {
-    fontSize: 18,
+    fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
-    marginBottom: 5,
+    marginBottom: scale(5),
   },
-
-     waitingContainer: {
-     flex: 1,
-     justifyContent: 'center',
-     alignItems: 'center',
-     padding: 20,
-     paddingTop: 0,
-   },
+  waitingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: getResponsivePadding(20),
+    paddingTop: 0,
+  },
   waitingText: {
     color: '#fff',
-    fontSize: 18,
-    marginTop: 20,
+    fontSize: getResponsiveFontSize(18),
+    marginTop: getResponsiveMargin(20),
     textAlign: 'center',
   },
   roomIdText: {
     color: '#4a90e2',
-    fontSize: 16,
-    marginTop: 10,
+    fontSize: getResponsiveFontSize(16),
+    marginTop: scale(10),
   },
   finishedContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: getResponsivePadding(20),
   },
   gameOverText: {
     color: '#fff',
-    fontSize: 28,
+    fontSize: getResponsiveFontSize(28),
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: getResponsiveMargin(20),
   },
   resultText: {
     color: '#28a745',
-    fontSize: 24,
+    fontSize: getResponsiveFontSize(24),
     fontWeight: 'bold',
-    marginBottom: 30,
+    marginBottom: getResponsiveMargin(30),
   },
   backButton: {
     backgroundColor: '#4a90e2',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 15,
+    paddingHorizontal: getResponsivePadding(30),
+    paddingVertical: getResponsivePadding(15),
+    borderRadius: borderRadius.lg,
   },
   backButtonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
   },
   setupContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: getResponsivePadding(20),
   },
   setupTitle: {
-    fontSize: 24,
+    fontSize: getResponsiveFontSize(24),
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 10,
+    marginBottom: scale(10),
     textAlign: 'center',
   },
-         setupSubtitle: {
-      fontSize: 16,
-      color: '#6c757d',
-      marginBottom: 30,
-      textAlign: 'center',
-      paddingHorizontal: 20,
-    },
-    playerInput: {
-      marginBottom: 20,
-      alignItems: 'center',
-    },
-    playerLabel: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      color: '#fff',
-      marginBottom: 15,
-      textAlign: 'center',
-    },
-   cancelButton: {
-     backgroundColor: '#dc3545',
-     paddingHorizontal: 30,
-     paddingVertical: 15,
-     borderRadius: 15,
-     marginTop: 30,
-   },
-   cancelButtonText: {
-     color: '#fff',
-     fontSize: 16,
-     fontWeight: 'bold',
-   },
-   inputBoxesContainer: {
-     flexDirection: 'row',
-     justifyContent: 'center',
-     alignItems: 'center',
-     marginBottom: 30,
-     paddingHorizontal: 20,
-     width: '100%',
-   },
-   inputBoxWrapper: {
-     marginHorizontal: 5,
-     alignItems: 'center',
-   },
-   inputBoxImage: {
-     width: 60,
-     height: 60,
-     borderRadius: 8,
-     justifyContent: 'center',
-     alignItems: 'center',
-     borderWidth: 2,
-     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-     borderColor: '#4a90e2',
-     shadowColor: '#000',
-     shadowOffset: { width: 0, height: 2 },
-     shadowOpacity: 0.25,
-     shadowRadius: 3.84,
-     elevation: 5,
-   },
-   inputBoxDigit: {
-     position: 'absolute',
-     fontSize: 24,
-     fontWeight: 'bold',
-     color: '#fff',
-     textShadowColor: 'rgba(0, 0, 0, 0.8)',
-     textShadowOffset: { width: 1, height: 1 },
-     textShadowRadius: 3,
-   },
-   numberButtonsContainer: {
-     paddingHorizontal: 20,
-     marginBottom: 20,
-   },
-   numberRow: {
-     flexDirection: 'row',
-     justifyContent: 'space-around',
-     marginBottom: 15,
-   },
-   numberButton: {
-     width: (width - 60) / 5,
-     height: 50,
-     backgroundColor: 'rgba(74, 144, 226, 0.8)',
-     borderRadius: 25,
-     justifyContent: 'center',
-     alignItems: 'center',
-     borderWidth: 2,
-     borderColor: '#4a90e2',
-   },
-   numberButtonText: {
-     fontSize: 20,
-     fontWeight: 'bold',
-     color: '#fff',
-   },
-   actionRow: {
-     flexDirection: 'row',
-     justifyContent: 'space-around',
-     alignItems: 'center',
-     gap: 10,
-   },
-   deleteButton: {
-     width: (width - 80) / 4,
-     height: 50,
-     backgroundColor: '#dc3545',
-     borderRadius: 25,
-     justifyContent: 'center',
-     alignItems: 'center',
-     borderWidth: 2,
-     borderColor: '#c82333',
-   },
-   clearButton: {
-     width: (width - 80) / 4,
-     height: 50,
-     backgroundColor: '#ffc107',
-     borderRadius: 25,
-     justifyContent: 'center',
-     alignItems: 'center',
-     borderWidth: 2,
-     borderColor: '#e0a800',
-   },
-   submitButton: {
-     width: (width - 80) / 4,
-     height: 50,
-     backgroundColor: '#28a745',
-     borderRadius: 25,
-     justifyContent: 'center',
-     alignItems: 'center',
-     borderWidth: 2,
-     borderColor: '#1e7e34',
-   },
-   submitButtonText: {
-     color: '#fff',
-     fontWeight: 'bold',
-     fontSize: 12,
-   },
-       submitButtonDisabled: {
-      backgroundColor: '#6c757d',
-      opacity: 0.6,
-    },
-    autoFillButton: {
-      width: (width - 80) / 4,
-      height: 50,
-      backgroundColor: '#17a2b8',
-      borderRadius: 25,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: 2,
-      borderColor: '#138496',
-    },
-    autoFillButtonText: {
-      color: '#fff',
-      fontWeight: 'bold',
-      fontSize: 12,
-    },
-   errorContainer: {
-     alignItems: 'center',
-     padding: 20,
-   },
-   errorText: {
-     color: '#dc3545',
-     fontSize: 20,
-     fontWeight: 'bold',
-     marginTop: 15,
-     marginBottom: 10,
-   },
-   errorDescription: {
-     color: '#fff',
-     fontSize: 16,
-     textAlign: 'center',
-     marginBottom: 20,
-   },
-   retryButton: {
-     backgroundColor: '#4a90e2',
-     paddingHorizontal: 30,
-     paddingVertical: 15,
-     borderRadius: 15,
-   },
-   retryButtonText: {
-     color: '#fff',
-     fontSize: 16,
-     fontWeight: 'bold',
-   },
-   guessRow: {
-     flexDirection: 'row',
-     justifyContent: 'space-between',
-     alignItems: 'center',
-   },
-   feedbackDots: {
-     alignItems: 'center',
-     marginLeft: 10,
-   },
-   dotRow: {
-     flexDirection: 'row',
-     justifyContent: 'center',
-     alignItems: 'center',
-     gap: 4,
-   },
-   feedbackDot: {
-     width: 12,
-     height: 12,
-     borderRadius: 6,
-   },
-   exactDot: {
-     backgroundColor: '#28a745', // Green for exact matches
-   },
-   misplacedDot: {
-     backgroundColor: '#ffc107', // Yellow for misplaced
-   },
-     outOfPlaceDot: {
+  setupSubtitle: {
+    fontSize: getResponsiveFontSize(16),
+    color: '#6c757d',
+    marginBottom: getResponsiveMargin(30),
+    textAlign: 'center',
+    paddingHorizontal: getResponsivePadding(20),
+  },
+  playerInput: {
+    marginBottom: getResponsiveMargin(20),
+    alignItems: 'center',
+  },
+  playerLabel: {
+    fontSize: getResponsiveFontSize(18),
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: getResponsiveMargin(15),
+    textAlign: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#dc3545',
+    paddingHorizontal: getResponsivePadding(30),
+    paddingVertical: getResponsivePadding(15),
+    borderRadius: borderRadius.lg,
+    marginTop: getResponsiveMargin(30),
+  },
+  cancelButtonText: {
+    color: '#fff',
+    fontSize: getResponsiveFontSize(16),
+    fontWeight: 'bold',
+  },
+  inputBoxesContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: getResponsiveMargin(30),
+    paddingHorizontal: getResponsivePadding(20),
+    width: '100%',
+  },
+  inputBoxWrapper: {
+    marginHorizontal: scale(5),
+    alignItems: 'center',
+  },
+  inputBoxImage: {
+    width: getResponsiveButtonSize(60),
+    height: getResponsiveButtonSize(60),
+    borderRadius: borderRadius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: '#4a90e2',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  inputBoxDigit: {
+    position: 'absolute',
+    fontSize: getResponsiveFontSize(24),
+    fontWeight: 'bold',
+    color: '#fff',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+  numberButtonsContainer: {
+    paddingHorizontal: getResponsivePadding(20),
+    marginBottom: getResponsiveMargin(20),
+  },
+  numberRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: getResponsiveMargin(15),
+  },
+  numberButton: {
+    width: (responsiveWidth(90) - getResponsivePadding(60)) / 5, // Responsive width calculation
+    height: getResponsiveButtonSize(50),
+    backgroundColor: 'rgba(74, 144, 226, 0.8)',
+    borderRadius: borderRadius.round,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#4a90e2',
+  },
+  numberButtonText: {
+    fontSize: getResponsiveFontSize(20),
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    gap: scale(10),
+  },
+  deleteButton: {
+    width: (responsiveWidth(90) - getResponsivePadding(80)) / 4, // Responsive width calculation
+    height: getResponsiveButtonSize(50),
+    backgroundColor: '#dc3545',
+    borderRadius: borderRadius.round,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#c82333',
+  },
+  clearButton: {
+    width: (responsiveWidth(90) - getResponsivePadding(80)) / 4, // Responsive width calculation
+    height: getResponsiveButtonSize(50),
+    backgroundColor: '#ffc107',
+    borderRadius: borderRadius.round,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#e0a800',
+  },
+  submitButton: {
+    width: (responsiveWidth(90) - getResponsivePadding(80)) / 4, // Responsive width calculation
+    height: getResponsiveButtonSize(50),
+    backgroundColor: '#28a745',
+    borderRadius: borderRadius.round,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#1e7e34',
+  },
+  submitButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: getResponsiveFontSize(12),
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#6c757d',
+    opacity: 0.6,
+  },
+  autoFillButton: {
+    width: (responsiveWidth(90) - getResponsivePadding(80)) / 4, // Responsive width calculation
+    height: getResponsiveButtonSize(50),
+    backgroundColor: '#17a2b8',
+    borderRadius: borderRadius.round,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#138496',
+  },
+  autoFillButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: getResponsiveFontSize(12),
+  },
+  errorContainer: {
+    alignItems: 'center',
+    padding: getResponsivePadding(20),
+  },
+  errorText: {
+    color: '#dc3545',
+    fontSize: getResponsiveFontSize(20),
+    fontWeight: 'bold',
+    marginTop: getResponsiveMargin(15),
+    marginBottom: scale(10),
+  },
+  errorDescription: {
+    color: '#fff',
+    fontSize: getResponsiveFontSize(16),
+    textAlign: 'center',
+    marginBottom: getResponsiveMargin(20),
+  },
+  retryButton: {
+    backgroundColor: '#4a90e2',
+    paddingHorizontal: getResponsivePadding(30),
+    paddingVertical: getResponsivePadding(15),
+    borderRadius: borderRadius.lg,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: getResponsiveFontSize(16),
+    fontWeight: 'bold',
+  },
+  guessRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  feedbackDots: {
+    alignItems: 'center',
+    marginLeft: scale(10),
+  },
+  dotRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: scale(4),
+  },
+  feedbackDot: {
+    width: scale(12),
+    height: scale(12),
+    borderRadius: scale(6),
+  },
+  exactDot: {
+    backgroundColor: '#28a745', // Green for exact matches
+  },
+  misplacedDot: {
+    backgroundColor: '#ffc107', // Yellow for misplaced
+  },
+  outOfPlaceDot: {
     backgroundColor: '#dc3545', // Red for out of place
   },
   connectionStatusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 15,
-    padding: 10,
+    marginTop: getResponsiveMargin(15),
+    padding: getResponsivePadding(10),
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 10,
+    borderRadius: borderRadius.md,
   },
   connectionStatusIndicator: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 8,
+    width: scale(10),
+    height: scale(10),
+    borderRadius: scale(5),
+    marginRight: scale(8),
   },
   connectionStatusText: {
-    fontSize: 14,
+    fontSize: getResponsiveFontSize(14),
     color: '#fff',
     fontWeight: '500',
   },
- });
+});
