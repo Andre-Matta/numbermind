@@ -10,6 +10,7 @@ import {
   Animated,
   BackHandler,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,8 +38,9 @@ import {
 const { width, height } = Dimensions.get('window');
 
 export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
-  const { userSkins } = useData();
+  const { userSkins, themeSkins } = useData();
   const [gameState, setGameState] = useState('waiting'); // waiting, setup, playing, finished
+  const [gameMode, setGameMode] = useState('standard');
   
   // Get screen dimensions for responsive design
   const screenDimensions = getScreenDimensions();
@@ -85,6 +87,45 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
 
   // Use skins from DataContext instead of fetching
   const availableSkins = userSkins || ['default'];
+  // Themes for input boxes (mirror LocalGameScreen behavior)
+  const availableThemes = Object.keys(themeSkins || {}).length > 0 ? themeSkins : { default: { name: 'Default Theme', imageUrl: null } };
+
+  const getThemeImageSource = (theme) => {
+    if (theme?.imageData) {
+      return { uri: theme.imageData };
+    } else if (theme?.imageAsset) {
+      return theme.imageAsset;
+    } else if (theme?.imageUrl) {
+      return { uri: theme.imageUrl };
+    }
+    return null;
+  };
+
+  const getThemeStyle = (themeKey) => {
+    const theme = availableThemes[themeKey];
+    if (!theme) return styles.inputBoxDefault;
+    if (theme.imageData || theme.imageAsset || theme.imageUrl) {
+      return {
+        backgroundColor: 'transparent',
+        borderColor: '#4a90e2',
+        borderWidth: 2,
+      };
+    }
+    return styles.inputBoxDefault;
+  };
+
+  const getThemePreviewStyle = (themeKey) => {
+    const theme = availableThemes[themeKey];
+    if (!theme) return styles.skinPreviewDefault;
+    if (theme.imageData || theme.imageAsset || theme.imageUrl) {
+      return {
+        backgroundColor: 'transparent',
+        borderColor: '#4a90e2',
+        borderWidth: 2,
+      };
+    }
+    return styles.skinPreviewDefault;
+  };
 
   useEffect(() => {
     const initializeGame = async () => {
@@ -380,6 +421,7 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
       console.log('✅ Game update for our room, transitioning to playing state');
       console.log('✅ Game state transitioning from', currentGameStateRef.current, 'to playing');
       setGameStateWithRef('playing');
+      if (data.gameMode) setGameMode(data.gameMode);
       
       // Fix turn detection - compare with AUTH USER ID (server sends userId)
       let myUserId = myUserIdRef.current;
@@ -408,30 +450,34 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     console.log('🔍 Current roomId:', roomId, 'Event roomId:', data.roomId);
     if (data.roomId === roomId) {
       console.log('✅ Opponent guess for our room, processing...');
-      const guessData = data.guess;
-      
-      // Add to opponent guesses with proper feedback structure
-      const opponentGuess = {
-        guess: guessData.guess,
-        feedback: guessData.feedback,
-        timestamp: new Date(guessData.timestamp)
-      };
-      
-      setOpponentGuesses(prev => [...prev, opponentGuess]);
-      
-      // Update turn: it's my turn if the other player submitted the guess
       let myUserId = myUserIdRef.current;
       if (!myUserId) {
         const me = AuthService.getCurrentUser && AuthService.getCurrentUser();
         myUserId = me?._id || me?.id || null;
         myUserIdRef.current = myUserId;
       }
-      const submitterId = data?.guess?.playerId;
-      const itsMyTurnNow = String(submitterId || '') !== String(myUserId || '');
+      const guessData = data.guess;
+      const submitterId = guessData?.playerId;
+      const isOwnGuess = String(submitterId || '') === String(myUserId || '');
+
+      // If the submitter is me, do NOT add to opponentGuesses
+      if (!isOwnGuess) {
+        // Add to opponent guesses with proper feedback structure
+        const opponentGuess = {
+          guess: guessData.guess,
+          feedback: guessData.feedback,
+          timestamp: new Date(guessData.timestamp)
+        };
+        setOpponentGuesses(prev => [...prev, opponentGuess]);
+        console.log('🎯 Opponent guess received:', opponentGuess);
+      } else {
+        console.log('ℹ️ Ignoring my own guess for opponent history');
+      }
+
+      // Update turn: it's my turn if the other player submitted the guess
+      const itsMyTurnNow = !isOwnGuess;
       console.log('🔄 guessSubmitted turn calc:', { submitterId, myUserId, itsMyTurnNow, currentTurn: data.currentTurn });
       setIsMyTurn(itsMyTurnNow);
-      
-      console.log('🎯 Opponent guess received:', opponentGuess);
       console.log('🔄 Turn switched to current player');
     } else {
       console.log('❌ Opponent guess for different room, ignoring');
@@ -682,8 +728,8 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
     }
   };
 
-  const renderGuessHistory = (guessList, title, isOpponent = false) => (
-    <View style={styles.guessSection}>
+  const renderGuessHistory = (guessList, title) => (
+    <View style={styles.guessHistorySection}>
       <Text style={styles.sectionTitle}>{title}</Text>
       <ScrollView style={styles.guessList} showsVerticalScrollIndicator={false}>
         {guessList.length === 0 ? (
@@ -692,19 +738,47 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
           guessList.map((guess, index) => (
             <View key={index} style={styles.guessItem}>
               <View style={styles.guessRow}>
-                <Text style={styles.guessText}>{guess.guess}</Text>
-                {guess.feedback && (
-                  <View style={styles.feedbackDots}>
-                    <View style={styles.dotRow}>
-                      {[...Array(guess.feedback.exact || 0)].map((_, i) => (
-                        <View key={i} style={[styles.feedbackDot, styles.exactDot]} />
-                      ))}
-                      {[...Array(guess.feedback.misplaced || 0)].map((_, i) => (
-                        <View key={i} style={[styles.feedbackDot, styles.misplacedDot]} />
-                      ))}
-                      {[...Array(guess.feedback.outOfPlace || 0)].map((_, i) => (
-                        <View key={i} style={[styles.feedbackDot, styles.outOfPlaceDot]} />
-                      ))}
+                {gameMode === 'hard' ? (
+                  <>
+                    <Text style={styles.guessText}>{guess.guess}</Text>
+                    <View style={styles.guessRightGroup}>
+                      <View
+                        style={[
+                          styles.correctPill,
+                          (guess.feedback.exact === 0) ? styles.correctPillRed : styles.correctPillGreen,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.correctPillText,
+                            (guess.feedback.exact === 0) ? styles.correctPillTextRed : styles.correctPillTextGreen,
+                          ]}
+                        >
+                          {guess.feedback.exact}
+                        </Text>
+                      </View>
+                    </View>
+                  </>
+                ) : (
+                  <View style={styles.guessLeftGroup}>
+                    <Text style={styles.guessText}>{guess.guess}</Text>
+                    <View
+                      style={[
+                        styles.correctPill,
+                        (guess.feedback.exact === 0) ? styles.correctPillRed : styles.correctPillGreen,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.correctPillText,
+                          (guess.feedback.exact === 0) ? styles.correctPillTextRed : styles.correctPillTextGreen,
+                        ]}
+                      >
+                        {guess.feedback.exact}
+                      </Text>
+                    </View>
+                    <View style={[styles.correctPill, styles.misplacedPillYellow]}>
+                      <Text style={[styles.correctPillText, styles.misplacedPillTextYellow]}>{guess.feedback.misplaced}</Text>
                     </View>
                   </View>
                 )}
@@ -742,10 +816,18 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
           <View key={index} style={styles.inputBoxWrapper}>
             <Animated.View 
               style={[
-                styles.inputBoxImage, 
+                styles.inputBoxImage,
+                getThemeStyle(selectedSkin),
                 { transform: [{ scale: animations[index] }] }
               ]}
             >
+              {getThemeImageSource(availableThemes[selectedSkin]) && (
+                <Image
+                  source={getThemeImageSource(availableThemes[selectedSkin])}
+                  style={styles.themeImage}
+                  resizeMode="cover"
+                />
+              )}
               <Text style={styles.inputBoxDigit}>{digit}</Text>
             </Animated.View>
           </View>
@@ -922,15 +1004,15 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
               {gameResult.winner === NetworkService.playerId ? 'You Won!' : 'You Lost!'}
             </Text>
           )}
-                     <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-             <Text style={styles.backButtonText}>Back to Lobby</Text>
-           </TouchableOpacity>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Text style={styles.backButtonText}>Back to Lobby</Text>
+          </TouchableOpacity>
         </View>
       </LinearGradient>
     );
   }
 
-    return (
+  return (
     <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
@@ -938,35 +1020,93 @@ export default function MultiplayerGameScreen({ roomId, onBack, onGameEnd }) {
           <Ionicons name="arrow-back" size={getResponsiveFontSize(24)} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.title}>Multiplayer Game</Text>
-        <View style={styles.placeholder} />
+        <TouchableOpacity style={styles.settingsButton} onPress={() => setShowSkinSelector(!showSkinSelector)}>
+          <Ionicons name="settings" size={getResponsiveFontSize(24)} color="#fff" />
+        </TouchableOpacity>
       </View>
 
-      {/* Room Info */}
-      <View style={styles.roomInfo}>
-        <Text style={styles.roomId}>Room: {roomId}</Text>
+      {/* Game Info */}
+      <View style={styles.gameInfo}>
+        <Text style={styles.gameModeText}>Mode: {gameMode}</Text>
         <Text style={styles.turnIndicator}>
           {isMyTurn ? 'Your Turn' : 'Opponent\'s Turn'}
         </Text>
+        <Text style={styles.roomIdText}>Room: {roomId}</Text>
       </View>
 
       {/* Opponent Status */}
       {renderOpponentStatus()}
 
-      {/* Game Area */}
-      <View style={styles.gameArea}>
-        {/* Input Section */}
-        <View style={styles.inputSection}>
-          <Text style={styles.inputLabel}>Enter your guess (5 digits):</Text>
-          {renderInputBoxes(false)}
-          {renderNumberButtons(false)}
-        </View>
-
-        {/* Guesses Section */}
-        <View style={styles.guessesContainer}>
+      {/* Guess History - Two Columns like LocalGame */}
+      <View style={styles.guessHistoryContainer}>
+        <View style={styles.historyRow}>
           {renderGuessHistory(guesses, 'Your Guesses')}
-          {renderGuessHistory(opponentGuesses, 'Opponent\'s Guesses', true)}
+          {renderGuessHistory(opponentGuesses, 'Opponent\'s Guesses')}
         </View>
       </View>
+
+      {/* Input Section at bottom */}
+      <View style={styles.bottomInputSection}>
+        {renderInputBoxes(false)}
+        {renderNumberButtons(false)}
+      </View>
+
+      {/* Skin Selector Popup */}
+      {showSkinSelector && (
+        <TouchableOpacity
+          style={styles.skinSelectorOverlay}
+          activeOpacity={1}
+          onPress={() => setShowSkinSelector(false)}
+        >
+          <TouchableOpacity
+            style={styles.skinSelectorPopup}
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.skinSelectorHeader}>
+              <Text style={styles.skinSelectorTitle}>Input Box Style</Text>
+              <TouchableOpacity onPress={() => setShowSkinSelector(false)}>
+                <Ionicons name="close" size={getResponsiveFontSize(24)} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.skinGrid}>
+                {Object.keys(availableThemes).reduce((rows, themeKey, index) => {
+                  const rowIndex = Math.floor(index / 3);
+                  if (!rows[rowIndex]) {
+                    rows[rowIndex] = [];
+                  }
+                  rows[rowIndex].push(
+                    <TouchableOpacity
+                      key={themeKey}
+                      style={[styles.skinOption, selectedSkin === themeKey && styles.skinOptionSelected]}
+                      onPress={() => {
+                        setSelectedSkin(themeKey);
+                      }}
+                    >
+                      <View style={[styles.skinOptionPreview, getThemePreviewStyle(themeKey)]}>
+                        {getThemeImageSource(availableThemes[themeKey]) && (
+                          <Image
+                            source={getThemeImageSource(availableThemes[themeKey])}
+                            style={styles.themePreviewImage}
+                            resizeMode="cover"
+                          />
+                        )}
+                      </View>
+                      <Text style={styles.skinOptionText}>{availableThemes[themeKey].name}</Text>
+                    </TouchableOpacity>
+                  );
+                  return rows;
+                }, []).map((row, rowIndex) => (
+                  <View key={rowIndex} style={styles.skinRow}>
+                    {row}
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      )}
     </LinearGradient>
   );
 }
@@ -1048,6 +1188,14 @@ const styles = StyleSheet.create({
   inputSection: {
     marginBottom: getResponsiveMargin(30),
   },
+  bottomInputSection: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    padding: getResponsivePadding(10),
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)'
+  },
   inputLabel: {
     fontSize: getResponsiveFontSize(16),
     color: '#fff',
@@ -1093,6 +1241,18 @@ const styles = StyleSheet.create({
   guessesContainer: {
     flex: 1,
   },
+  guessHistoryContainer: {
+    flex: 1,
+    paddingHorizontal: getResponsivePadding(20),
+  },
+  historyRow: {
+    flexDirection: 'row',
+    flex: 1,
+  },
+  guessHistorySection: {
+    flex: 1,
+    marginHorizontal: scale(5),
+  },
   guessSection: {
     marginBottom: getResponsiveMargin(20),
   },
@@ -1126,6 +1286,154 @@ const styles = StyleSheet.create({
     color: '#fff',
     textAlign: 'center',
     marginBottom: scale(5),
+  },
+  guessLeftGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(8),
+    flex: 1,
+  },
+  guessRightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 'auto',
+  },
+  correctPill: {
+    paddingVertical: scale(4),
+    paddingHorizontal: scale(10),
+    borderRadius: scale(12),
+    borderWidth: 2,
+  },
+  correctPillGreen: {
+    backgroundColor: 'rgba(40, 167, 69, 0.18)',
+    borderColor: '#28a745',
+  },
+  correctPillRed: {
+    backgroundColor: 'rgba(220, 53, 69, 0.18)',
+    borderColor: '#dc3545',
+  },
+  misplacedPillYellow: {
+    backgroundColor: 'rgba(255, 193, 7, 0.18)',
+    borderColor: '#ffc107',
+    borderWidth: 2,
+  },
+  correctPillText: {
+    fontWeight: 'bold',
+    fontSize: getResponsiveFontSize(13),
+  },
+  correctPillTextGreen: {
+    color: '#28a745',
+  },
+  correctPillTextRed: {
+    color: '#dc3545',
+  },
+  misplacedPillTextYellow: {
+    color: '#ffc107',
+    fontWeight: 'bold',
+  },
+  settingsButton: {
+    padding: scale(8),
+  },
+  gameInfo: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+    paddingHorizontal: getResponsivePadding(20),
+  },
+  gameModeText: {
+    fontSize: getResponsiveFontSize(16),
+    color: '#4a90e2',
+    marginBottom: spacing.xs,
+    textAlign: 'center',
+  },
+  themeImage: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    borderRadius: borderRadius.sm,
+  },
+  themePreviewImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: borderRadius.sm,
+  },
+  inputBoxDefault: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: '#4a90e2',
+  },
+  skinSelectorOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  skinSelectorPopup: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: borderRadius.xl,
+    padding: getResponsivePadding(20),
+    width: getResponsiveContainerWidth(90),
+    maxWidth: 400,
+    maxHeight: responsiveHeight(60),
+    borderWidth: 2,
+    borderColor: '#4a90e2',
+    position: 'absolute',
+    bottom: '40%',
+  },
+  skinSelectorHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  skinSelectorTitle: {
+    fontSize: getResponsiveFontSize(16),
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  skinGrid: {
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
+  skinRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: scale(15),
+  },
+  skinOption: {
+    alignItems: 'center',
+    padding: getResponsivePadding(10),
+    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    width: Math.min((responsiveWidth(90) - getResponsivePadding(40)) / 8, getResponsiveButtonSize(80)),
+    maxWidth: getResponsiveButtonSize(100),
+  },
+  skinOptionSelected: {
+    backgroundColor: 'rgba(74, 144, 226, 0.3)',
+    borderWidth: 2,
+    borderColor: '#4a90e2',
+  },
+  skinOptionPreview: {
+    width: scale(40),
+    height: scale(40),
+    marginBottom: scale(5),
+    borderRadius: scale(6),
+    borderWidth: 2,
+  },
+  skinPreviewDefault: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: '#4a90e2',
+  },
+  skinOptionText: {
+    fontSize: 12,
+    color: '#fff',
   },
   waitingContainer: {
     flex: 1,
