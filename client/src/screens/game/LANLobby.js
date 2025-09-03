@@ -21,6 +21,11 @@ export default function LANLobby({ onGameStart, onBack }) {
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [availableRooms, setAvailableRooms] = useState([]);
+  const [hostedRoomSettings, setHostedRoomSettings] = useState({}); // roomId -> { mode, timer }
+  const [showSetupModal, setShowSetupModal] = useState(false);
+  const [mpMode, setMpMode] = useState('standard');
+  const [timerMode, setTimerMode] = useState('none');
+  const [timerSeconds, setTimerSeconds] = useState(30);
 
   useEffect(() => {
     initializeOfflineLAN();
@@ -128,8 +133,8 @@ export default function LANLobby({ onGameStart, onBack }) {
       return;
     }
 
-    // If no existing room, create new one directly
-    await createNewRoom();
+    // If no existing room, show setup modal
+    setShowSetupModal(true);
   };
 
   // Helper function to create a new room
@@ -153,6 +158,13 @@ export default function LANLobby({ onGameStart, onBack }) {
         type: 'hosted_room'
       };
       setAvailableRooms([newRoom]);
+      setHostedRoomSettings(prev => ({
+        ...prev,
+        [response.roomId]: {
+          mode: mpMode,
+          timer: timerMode === 'none' ? null : timerSeconds,
+        },
+      }));
       
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
@@ -546,6 +558,20 @@ export default function LANLobby({ onGameStart, onBack }) {
                            })()}
                          </Text>
                          <Text style={styles.roomHostText}>Host: {room.hostIP}</Text>
+                         {(() => {
+                           const serviceStatus = OfflineLANService.getStatus();
+                           const isHostOfThisRoom = serviceStatus.isHost && serviceStatus.roomId === room.roomId;
+                           const settings = hostedRoomSettings[room.roomId];
+                           if (isHostOfThisRoom && settings) {
+                             return (
+                               <Text style={styles.roomMetaText}>
+                                 Mode: {settings.mode === 'hard' ? 'Hard' : 'Standard'}
+                                 {`  |  Timer: ${settings.timer ? settings.timer + 's' : 'None'}`}
+                               </Text>
+                             );
+                           }
+                           return null;
+                         })()}
                          <Text style={styles.roomJoinText}>
                            {(() => {
                              const serviceStatus = OfflineLANService.getStatus();
@@ -587,6 +613,77 @@ export default function LANLobby({ onGameStart, onBack }) {
 
         
       </ScrollView>
+
+      {/* Setup Modal */}
+      {showSetupModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Room Setup</Text>
+
+            {/* Mode Selection */}
+            <Text style={styles.modalLabel}>Mode</Text>
+            <View style={styles.modalRow}>
+              <TouchableOpacity
+                style={[styles.optionButton, mpMode === 'standard' && styles.optionButtonActive]}
+                onPress={() => setMpMode('standard')}
+              >
+                <Text style={[styles.optionText, mpMode === 'standard' && styles.optionTextActive]}>Standard</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.optionButton, mpMode === 'hard' && styles.optionButtonActive]}
+                onPress={() => setMpMode('hard')}
+              >
+                <Text style={[styles.optionText, mpMode === 'hard' && styles.optionTextActive]}>Hard</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Timer Selection */}
+            <Text style={[styles.modalLabel, { marginTop: 12 }]}>Turn Timer</Text>
+            <View style={styles.modalRow}>
+              <TouchableOpacity
+                style={[styles.optionButton, timerMode === 'none' && styles.optionButtonActive]}
+                onPress={() => setTimerMode('none')}
+              >
+                <Text style={[styles.optionText, timerMode === 'none' && styles.optionTextActive]}>None</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.optionButton, timerMode === 'custom' && styles.optionButtonActive]}
+                onPress={() => setTimerMode('custom')}
+              >
+                <Text style={[styles.optionText, timerMode === 'custom' && styles.optionTextActive]}>Custom</Text>
+              </TouchableOpacity>
+            </View>
+
+            {timerMode === 'custom' && (
+              <View style={styles.timerSliderContainer}>
+                <Text style={styles.timerLabel}>Seconds: {timerSeconds}</Text>
+                <View style={styles.timerTrack}>
+                  {[5,10,15,20,25,30,35,40,45,50,55,60].map(val => (
+                    <TouchableOpacity key={val} style={[styles.timerTick, timerSeconds === val && styles.timerTickActive]} onPress={() => setTimerSeconds(val)}>
+                      <Text style={[styles.timerTickText, timerSeconds === val && styles.timerTickTextActive]}>{val}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={[styles.modalButton, styles.modalCancel]} onPress={() => setShowSetupModal(false)}>
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalStart]}
+                onPress={async () => {
+                  setShowSetupModal(false);
+                  await createNewRoom();
+                }}
+              >
+                <Text style={styles.modalButtonText}>Start Room</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </LinearGradient>
   );
 }
@@ -751,6 +848,11 @@ const styles = StyleSheet.create({
     color: '#ccc',
     marginTop: 5,
   },
+  roomMetaText: {
+    fontSize: 12,
+    color: '#9fb3c8',
+    marginTop: 4,
+  },
   discoveringContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -797,6 +899,132 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textAlign: 'center',
     paddingHorizontal: 10,
+  },
+
+  // Modal styles (shared with MultiplayerLobby)
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: 'rgba(26,26,46,1)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    padding: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  modalLabel: {
+    fontSize: 14,
+    color: '#9fb3c8',
+    marginBottom: 6,
+  },
+  modalRow: {
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  optionButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+  },
+  optionButtonActive: {
+    backgroundColor: 'rgba(74,144,226,0.25)',
+    borderColor: '#4a90e2',
+  },
+  optionText: {
+    color: '#9fb3c8',
+    fontWeight: '700',
+  },
+  optionTextActive: {
+    color: '#fff',
+  },
+  timerSliderContainer: {
+    marginTop: 6,
+    padding: 10,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)'
+  },
+  timerLabel: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+    marginBottom: 8,
+    textAlign: 'center'
+  },
+  timerTrack: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between'
+  },
+  timerTick: {
+    width: (360 - 24) / 6,
+    maxWidth: 56,
+    marginBottom: 8,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)'
+  },
+  timerTickActive: {
+    backgroundColor: 'rgba(74, 144, 226, 0.25)',
+    borderColor: '#4a90e2'
+  },
+  timerTickText: {
+    color: '#9fb3c8',
+    fontWeight: '600'
+  },
+  timerTickTextActive: {
+    color: '#fff'
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalCancel: {
+    backgroundColor: 'rgba(220,53,69,0.15)',
+    borderWidth: 1,
+    borderColor: '#dc3545',
+  },
+  modalStart: {
+    backgroundColor: 'rgba(40,167,69,0.2)',
+    borderWidth: 1,
+    borderColor: '#28a745',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontWeight: '700',
   },
 
 });
