@@ -7,6 +7,7 @@ import {
   Alert,
   Dimensions,
   Animated,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +25,8 @@ export default function LocalGameSetup({ onGameStart, onBack }) {
   const [player2Number, setPlayer2Number] = useState(['', '', '', '', '']);
   const [gameMode, setGameMode] = useState('standard');
   const [selectedSkin, setSelectedSkin] = useState('default'); // default, gold, neon, etc.
+  const [timerMode, setTimerMode] = useState('none'); // 'none' | 'custom'
+  const [timerSeconds, setTimerSeconds] = useState(30); // 5 to 60
   const [boxAnimations] = useState([
     new Animated.Value(1),
     new Animated.Value(1),
@@ -133,6 +136,7 @@ export default function LocalGameSetup({ onGameStart, onBack }) {
       player1Number: player1Number.join(''),
       player2Number: player2Number.join(''),
       gameMode,
+      timer: timerMode === 'none' ? null : { seconds: timerSeconds }
     });
   };
 
@@ -244,100 +248,140 @@ export default function LocalGameSetup({ onGameStart, onBack }) {
       colors={['#1a1a2e', '#16213e', '#0f3460']}
       style={styles.container}
     >
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={goBack}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Local Game Setup</Text>
-        <View style={styles.placeholder} />
-      </View>
-
-      {/* Progress Indicator */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressStep}>
-          <View style={[styles.progressDot, step >= 1 && styles.progressDotActive]} />
-          <Text style={[styles.progressText, step >= 1 && styles.progressTextActive]}>
-            Player 1
-          </Text>
-        </View>
-        <View style={styles.progressLine} />
-        <View style={styles.progressStep}>
-          <View style={[styles.progressDot, step >= 2 && styles.progressDotActive]} />
-          <Text style={[styles.progressText, step >= 2 && styles.progressTextActive]}>
-            Player 2
-          </Text>
-        </View>
-      </View>
-
-      {/* Game Mode Selection */}
-      <View style={styles.modeSelector}>
-        <Text style={styles.sectionTitle}>Game Mode</Text>
-        <View style={styles.modeButtons}>
-          <TouchableOpacity
-            style={[
-              styles.modeButton,
-              gameMode === 'standard' && styles.modeButtonActive,
-            ]}
-            onPress={() => setGameMode('standard')}
-          >
-            <Text style={[
-              styles.modeButtonText,
-              gameMode === 'standard' && styles.modeButtonTextActive,
-            ]}>
-              Standard
-            </Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={goBack}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.modeButton,
-              gameMode === 'hard' && styles.modeButtonActive,
-            ]}
-            onPress={() => setGameMode('hard')}
-          >
-            <Text style={[
-              styles.modeButtonText,
-              gameMode === 'hard' && styles.modeButtonTextActive,
-            ]}>
-              Hard
-            </Text>
-          </TouchableOpacity>
+          <Text style={styles.title}>Local Game Setup</Text>
+          <View style={styles.placeholder} />
         </View>
-      </View>
 
-      {/* Player 1 Setup */}
-      {step === 1 && (
-        <View style={styles.setupContainer}>
-          <Text style={styles.sectionTitle}>Player 1's Turn</Text>
-          <Text style={styles.instruction}>
-            Enter your secret 5-digit number. Player 2 will not see this number.
-          </Text>
-          
-          <View style={styles.playerInput}>
-            <Text style={styles.playerLabel}>Your Secret Number</Text>
-            {renderInputBoxes(1)}
+        {/* Progress Indicator */}
+        <View style={styles.progressContainer}>
+          <View style={styles.progressStep}>
+            <View style={[styles.progressDot, step >= 1 && styles.progressDotActive]} />
+            <Text style={[styles.progressText, step >= 1 && styles.progressTextActive]}>
+              Player 1
+            </Text>
+          </View>
+          <View style={styles.progressLine} />
+          <View style={styles.progressStep}>
+            <View style={[styles.progressDot, step >= 2 && styles.progressDotActive]} />
+            <Text style={[styles.progressText, step >= 2 && styles.progressTextActive]}>
+              Player 2
+            </Text>
+          </View>
+        </View>
+
+        {/* Game Mode Selection */}
+        <View style={styles.modeSelector}>
+          <Text style={styles.sectionTitle}>Game Mode</Text>
+          <View style={styles.modeButtons}>
+            <TouchableOpacity
+              style={[
+                styles.modeButton,
+                gameMode === 'standard' && styles.modeButtonActive,
+              ]}
+              onPress={() => setGameMode('standard')}
+            >
+              <Text style={[
+                styles.modeButtonText,
+                gameMode === 'standard' && styles.modeButtonTextActive,
+              ]}>
+                Standard
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.modeButton,
+                gameMode === 'hard' && styles.modeButtonActive,
+              ]}
+              onPress={() => setGameMode('hard')}
+            >
+              <Text style={[
+                styles.modeButtonText,
+                gameMode === 'hard' && styles.modeButtonTextActive,
+              ]}>
+                Hard
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Timer Selection */}
+        <View style={styles.modeSelector}>
+          <Text style={styles.sectionTitle}>Turn Timer</Text>
+          <View style={styles.modeButtons}>
+            <TouchableOpacity
+              style={[styles.modeButton, timerMode === 'none' && styles.modeButtonActive]}
+              onPress={() => setTimerMode('none')}
+            >
+              <Text style={[styles.modeButtonText, timerMode === 'none' && styles.modeButtonTextActive]}>None</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modeButton, timerMode === 'custom' && styles.modeButtonActive]}
+              onPress={() => setTimerMode('custom')}
+            >
+              <Text style={[styles.modeButtonText, timerMode === 'custom' && styles.modeButtonTextActive]}>Custom</Text>
+            </TouchableOpacity>
           </View>
 
-          {renderNumberButtons(1)}
+          {timerMode === 'custom' && (
+            <View style={styles.timerSliderContainer}>
+              <Text style={styles.timerLabel}>Seconds: {timerSeconds}</Text>
+              <View style={styles.timerTrack}>
+                {[5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60].map(val => (
+                  <TouchableOpacity
+                    key={val}
+                    style={[styles.timerTick, timerSeconds === val && styles.timerTickActive]}
+                    onPress={() => setTimerSeconds(val)}
+                  >
+                    <Text style={[styles.timerTickText, timerSeconds === val && styles.timerTickTextActive]}>
+                      {val}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
         </View>
-      )}
 
-      {/* Player 2 Setup */}
-      {step === 2 && (
-        <View style={styles.setupContainer}>
-          <Text style={styles.sectionTitle}>Player 2's Turn</Text>
-          <Text style={styles.instruction}>
-            Enter your secret 5-digit number. Player 1 will not see this number.
-          </Text>
-          
-          <View style={styles.playerInput}>
-            <Text style={styles.playerLabel}>Your Secret Number</Text>
-            {renderInputBoxes(2)}
+        {/* Player 1 Setup */}
+        {step === 1 && (
+          <View style={styles.setupContainer}>
+            <Text style={styles.sectionTitle}>Player 1's Turn</Text>
+            <Text style={styles.instruction}>
+              Enter your secret 5-digit number. Player 2 will not see this number.
+            </Text>
+            
+            <View style={styles.playerInput}>
+              <Text style={styles.playerLabel}>Your Secret Number</Text>
+              {renderInputBoxes(1)}
+            </View>
+
+            {renderNumberButtons(1)}
           </View>
+        )}
 
-          {renderNumberButtons(2)}
-        </View>
-      )}
+        {/* Player 2 Setup */}
+        {step === 2 && (
+          <View style={styles.setupContainer}>
+            <Text style={styles.sectionTitle}>Player 2's Turn</Text>
+            <Text style={styles.instruction}>
+              Enter your secret 5-digit number. Player 1 will not see this number.
+            </Text>
+            
+            <View style={styles.playerInput}>
+              <Text style={styles.playerLabel}>Your Secret Number</Text>
+              {renderInputBoxes(2)}
+            </View>
+
+            {renderNumberButtons(2)}
+          </View>
+        )}
+      </ScrollView>
     </LinearGradient>
   );
 }
@@ -346,6 +390,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+  },
+  scrollContent: {
+    paddingBottom: 24,
   },
   header: {
     flexDirection: 'row',
@@ -511,12 +558,10 @@ const styles = StyleSheet.create({
     textShadowRadius: 3,
   },
   numberButtonsContainer: {
-    position: 'relative',
-    paddingBottom: 80,
   },
   numberRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-around',
     marginBottom: 12,
   },
   numberButton: {
@@ -539,80 +584,100 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     alignItems: 'center',
     gap: 6,
-    marginTop: 16,
   },
   autoFillRow: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 10,
+    marginTop: 10,
     alignItems: 'center',
-    paddingTop: 8,
   },
   deleteButton: {
     width: (width - 64) / 4,
-    height: 54,
-    backgroundColor: '#e74c3c',
-    borderRadius: 28,
+    height: 46,
+    backgroundColor: '#dc3545',
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#c0392b',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    borderColor: '#c82333',
   },
   clearButton: {
     width: (width - 64) / 4,
-    height: 54,
-    backgroundColor: '#ffca3a',
-    borderRadius: 28,
+    height: 46,
+    backgroundColor: '#ffc107',
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#e0a800',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
   },
   autoFillButton: {
     width: (width - 64) / 4,
-    height: 52,
+    height: 46,
     backgroundColor: '#17a2b8',
-    borderRadius: 26,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#138496',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
   },
   autoFillButtonText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 13,
+    fontSize: 12,
   },
   submitButton: {
     width: (width - 64) / 4,
-    height: 54,
-    backgroundColor: '#2ecc71',
-    borderRadius: 28,
+    height: 46,
+    backgroundColor: '#28a745',
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#27ae60',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    borderColor: '#1e7e34',
   },
   submitButtonText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 13,
+    fontSize: 12,
+  },
+  timerSliderContainer: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)'
+  },
+  timerLabel: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+    marginBottom: 8,
+    textAlign: 'center'
+  },
+  timerTrack: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between'
+  },
+  timerTick: {
+    width: (width - 48 - 24) / 6,
+    marginBottom: 8,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)'
+  },
+  timerTickActive: {
+    backgroundColor: 'rgba(74, 144, 226, 0.25)',
+    borderColor: '#4a90e2'
+  },
+  timerTickText: {
+    color: '#9fb3c8',
+    fontWeight: '600'
+  },
+  timerTickTextActive: {
+    color: '#fff'
   },
 });

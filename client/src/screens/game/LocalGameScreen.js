@@ -51,6 +51,10 @@ export default function LocalGameScreen({ gameData, onBack, onNewGame }) {
   const showBtnOpacity = useRef(new Animated.Value(0)).current;
   const showBtnTranslate = useRef(new Animated.Value(10)).current;
   const showBtnScale = useRef(new Animated.Value(0.95)).current;
+  // Timer
+  const timerSeconds = gameData?.timer?.seconds || null;
+  const [timerLeft, setTimerLeft] = useState(timerSeconds);
+  const timerIntervalRef = useRef(null);
 
   const { player1Number, player2Number, gameMode } = gameData;
 
@@ -84,6 +88,52 @@ export default function LocalGameScreen({ gameData, onBack, onNewGame }) {
       ]).start();
     }
   }, [hasShownNumber]);
+
+  // Reset and start timer each turn if timer enabled
+  useEffect(() => {
+    if (!timerSeconds || gameState !== 'playing') {
+      // Clear and hide timer if not used
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      setTimerLeft(null);
+      return;
+    }
+
+    // Reset timer for new turn
+    setTimerLeft(timerSeconds);
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+    }
+    timerIntervalRef.current = setInterval(() => {
+      setTimerLeft(prev => {
+        if (prev === null) return null;
+        if (prev <= 1) {
+          clearInterval(timerIntervalRef.current);
+          timerIntervalRef.current = null;
+          handleTimeExpired();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    };
+  }, [currentPlayer, gameState, timerSeconds]);
+
+  const handleTimeExpired = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    // End turn without a guess
+    setCurrentPlayer(prev => (prev === 1 ? 2 : 1));
+    setCurrentGuess(['', '', '', '', '']);
+    setHasShownNumber(false);
+  };
 
   const handleShowMyNumber = () => {
     setHasShownNumber(true);
@@ -527,6 +577,11 @@ export default function LocalGameScreen({ gameData, onBack, onNewGame }) {
         <Text style={styles.currentPlayerText}>
           Current Turn: Player {currentPlayer}
         </Text>
+        {timerSeconds && (
+          <View style={styles.timerBadge}>
+            <Text style={styles.timerBadgeText}>{timerLeft ?? timerSeconds}s</Text>
+          </View>
+        )}
       </View>
 
       {/* Show My Number / Banner */}
@@ -667,6 +722,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
+  },
+  timerBadge: {
+    marginTop: spacing.xs,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: '#4a90e2',
+    borderWidth: 1,
+    paddingHorizontal: getResponsivePadding(10),
+    paddingVertical: getResponsivePadding(4),
+    borderRadius: borderRadius.round,
+  },
+  timerBadgeText: {
+    color: '#fff',
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   inputSection: {
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
