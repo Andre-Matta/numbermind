@@ -181,6 +181,15 @@ const setupSocketIO = (server) => {
             });
             console.log(`✅ roomReady event emitted`);
           }
+
+          // If game is already playing, sync the joining socket
+          if (game.gameState === 'playing') {
+            socket.emit('gameStarted', {
+              roomId,
+              currentTurn: game.currentTurn ? game.currentTurn.toString() : game.currentTurn,
+              gameMode: game.gameMode
+            });
+          }
           
           return callback({
             success: true,
@@ -248,20 +257,57 @@ const setupSocketIO = (server) => {
 
         console.log(`👥 Player joined room: ${socket.user.username} -> ${roomId}`);
 
+        // Auto-start if both numbers already submitted but game not marked playing
+        try {
+          const numbersCount = (game.playerNumbers && typeof game.playerNumbers.size === 'number')
+            ? game.playerNumbers.size
+            : (game.playerNumbers ? new Map(Object.entries(game.playerNumbers)).size : 0);
+          if (numbersCount === 2 && game.gameState !== 'playing') {
+            game.gameState = 'playing';
+            if (!game.currentTurn) {
+              game.currentTurn = game.players[0];
+            }
+            if (!game.startedAt) {
+              game.startedAt = new Date();
+            }
+            await Game.findByIdAndUpdate(game._id, {
+              gameState: game.gameState,
+              currentTurn: game.currentTurn,
+              startedAt: game.startedAt
+            });
+            io.to(roomId).emit('gameStarted', {
+              roomId,
+              currentTurn: game.currentTurn ? game.currentTurn.toString() : game.currentTurn,
+              gameMode: game.gameMode
+            });
+          }
+        } catch (err) {
+          console.error('Error auto-starting game on join:', err);
+        }
+
         // Check if room is now full (2 players) and notify
         if (game.players.length === 2) {
-          console.log(`🎮 Room ${roomId} is now full with 2 players. Ready for setup phase.`);
-          
-          // Notify all players that the room is full and ready for setup
-          console.log(`📡 Emitting roomReady event to room ${roomId}`);
-          console.log(`🔍 Players in room:`, game.players);
-          console.log(`🔍 Socket IDs in room:`, Array.from(io.sockets.adapter.rooms.get(roomId) || []));
-          io.to(roomId).emit('roomReady', {
-            roomId,
-            players: game.players,
-            message: 'Room is full! Both players can now set up their secret numbers.'
-          });
-          console.log(`✅ roomReady event emitted`);
+          if (game.gameState === 'waiting') {
+            console.log(`🎮 Room ${roomId} is now full with 2 players. Ready for setup phase.`);
+            
+            // Notify all players that the room is full and ready for setup
+            console.log(`📡 Emitting roomReady event to room ${roomId}`);
+            console.log(`🔍 Players in room:`, game.players);
+            console.log(`🔍 Socket IDs in room:`, Array.from(io.sockets.adapter.rooms.get(roomId) || []));
+            io.to(roomId).emit('roomReady', {
+              roomId,
+              players: game.players,
+              message: 'Room is full! Both players can now set up their secret numbers.'
+            });
+            console.log(`✅ roomReady event emitted`);
+          } else if (game.gameState === 'playing') {
+            // If game already started earlier, sync both sockets
+            io.to(roomId).emit('gameStarted', {
+              roomId,
+              currentTurn: game.currentTurn ? game.currentTurn.toString() : game.currentTurn,
+              gameMode: game.gameMode
+            });
+          }
 
           // Send push notifications to both players
           try {
@@ -589,7 +635,9 @@ const setupSocketIO = (server) => {
           success: true,
           roomId,
           game: game.toObject(),
-          isReady: game.players.length === 2 && game.gameState === 'waiting'
+          isReady: game.players.length === 2 && game.gameState === 'waiting',
+          gameState: game.gameState,
+          currentTurn: game.currentTurn ? game.currentTurn.toString() : game.currentTurn
         };
 
         // If room is ready but game state is still waiting, emit roomReady event
@@ -604,6 +652,15 @@ const setupSocketIO = (server) => {
             message: 'Room is full! Both players can now set up their secret numbers.'
           });
           console.log(`✅ roomReady event emitted`);
+        }
+
+        // If game already playing, proactively sync client
+        if (game.gameState === 'playing') {
+          io.to(roomId).emit('gameStarted', {
+            roomId,
+            currentTurn: response.currentTurn,
+            gameMode: game.gameMode
+          });
         }
 
         callback(response);
@@ -706,15 +763,16 @@ const setupSocketIO = (server) => {
         if (!game.playerNumbers) {
           game.playerNumbers = new Map();
         }
-        
+
+        const submitterId = socket.userId.toString();
         // Check if player has already submitted a number
-        if (game.playerNumbers.has(socket.userId)) {
+        if (game.playerNumbers.has(submitterId)) {
           console.log(`⚠️ Player ${socket.user.username} already submitted a number in room ${roomId}`);
           return callback({ success: false, error: 'You have already submitted a number' });
         }
         
         // Use proper Mongoose Map syntax
-        game.playerNumbers.set(socket.userId, playerNumber);
+        game.playerNumbers.set(submitterId, playerNumber);
         console.log(`✅ Added number for player ${socket.user.username}: ${playerNumber}`);
 
         console.log(`🔢 Player ${socket.user.username} submitted number in room ${roomId}`);

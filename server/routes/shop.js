@@ -106,9 +106,27 @@ router.post('/purchase/:itemId', verifyToken, async (req, res) => {
       item.stock -= 1;
     }
 
-    // Add skin to user's available skins if it's a skin item
-    if (item.type === 'cosmetic' && item.category === 'theme') {
-      const skinName = item.name.toLowerCase().replace(/\s+/g, '');
+    // Add purchased item to user's inventory (bag)
+    const existingInventoryItem = user.inventory.find(inv => inv.itemId.toString() === item._id.toString());
+    if (existingInventoryItem) {
+      existingInventoryItem.quantity += 1;
+      existingInventoryItem.acquiredAt = new Date();
+    } else {
+      user.inventory.push({
+        itemId: item._id,
+        name: item.name,
+        category: item.category,
+        quantity: 1,
+        imageUrl: item.imageUrl || null,
+        imageData: item.imageData || null,
+        imageAsset: item.imageAsset || null,
+        effects: item.effects || {}
+      });
+    }
+
+    // If it's a Theme, also grant the skin by name for ease of use elsewhere
+    if (item.category === 'Theme') {
+      const skinName = item.name;
       if (!user.availableSkins.includes(skinName)) {
         user.availableSkins.push(skinName);
       }
@@ -120,7 +138,8 @@ router.post('/purchase/:itemId', verifyToken, async (req, res) => {
     res.json({ 
       message: 'Purchase successful!',
       remainingCoins: user.coins,
-      item: item.name
+      item: item.name,
+      inventory: user.inventory
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

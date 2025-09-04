@@ -14,6 +14,7 @@ import MultiplayerSelectionScreen from './src/screens/core/MultiplayerSelectionS
 import Shop from './src/screens/core/ShopScreen';
 import Leaderboard from './src/screens/core/LeaderboardScreen';
 import FriendsModal from './src/screens/modals/FriendsModal';
+import InventoryModal from './src/screens/modals/InventoryModal';
 import PlayerProfileModal from './src/screens/modals/PlayerProfileModal';
 import GameRules from './src/components/GameRules';
 
@@ -37,6 +38,7 @@ function AppContent() {
   const [showInbox, setShowInbox] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
+  const [showInventory, setShowInventory] = useState(false);
   const [gameData, setGameData] = useState(null);
   const [multiplayerRoomId, setMultiplayerRoomId] = useState(null);
   const [multiplayerType, setMultiplayerType] = useState(null); // 'lan' or 'internet'
@@ -182,6 +184,10 @@ function AppContent() {
     setShowInbox(true);
   };
 
+  const handleShowInventory = () => {
+    setShowInventory(true);
+  };
+
 
 
   const handleShowFriends = () => {
@@ -264,7 +270,7 @@ function AppContent() {
             onShowLeaderboard={handleShowLeaderboard}
             onShowShop={handleShowShop}
             onShowInbox={handleShowInbox}
-
+            onShowInventory={handleShowInventory}
             onShowFriends={handleShowFriends}
             onShowRules={() => setShowRules(true)}
           />
@@ -358,7 +364,7 @@ function AppContent() {
             onShowLeaderboard={handleShowLeaderboard}
             onShowShop={handleShowShop}
             onShowInbox={handleShowInbox}
-
+            onShowInventory={handleShowInventory}
             onShowFriends={handleShowFriends}
             onShowRules={() => setShowRules(true)}
           />
@@ -394,6 +400,10 @@ function AppContent() {
         <FriendsModal
           visible={showFriends}
           onClose={() => setShowFriends(false)}
+        />
+        <InventoryModal
+          visible={showInventory}
+          onClose={() => setShowInventory(false)}
         />
       </SafeAreaView>
     </EdgeGestureBlocker>

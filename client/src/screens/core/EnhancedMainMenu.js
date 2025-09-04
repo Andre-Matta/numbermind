@@ -37,7 +37,8 @@ export default function EnhancedMainMenu({
   onShowRankedLobby,
   onShowInbox,
 
-  onShowFriends
+  onShowFriends,
+  onShowInventory
 }) {
   const { logout, user } = useAuth();
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
@@ -131,7 +132,7 @@ export default function EnhancedMainMenu({
             
             {isSidebarExpanded && (
               <>
-                <TouchableOpacity style={styles.sidebarButton} onPress={() => {}} activeOpacity={0.8}>
+                <TouchableOpacity style={styles.sidebarButton} onPress={onShowInventory} activeOpacity={0.8}>
                   <View style={styles.sidebarButtonContent}>
                     <Ionicons name="bag" size={18} color="#fff" />
                     <Text style={styles.sidebarButtonText}>Bag</Text>

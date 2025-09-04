@@ -97,6 +97,42 @@ const userSchema = new mongoose.Schema({
     type: [String],
     default: ['Default Theme'] // All users start with default skin
   },
+
+  // Inventory (Bag)
+  inventory: [{
+    itemId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ShopItem',
+      required: true
+    },
+    name: {
+      type: String,
+      required: true
+    },
+    category: {
+      type: String,
+      enum: ['Theme', 'Powerup', 'Avatar', 'Bundle'],
+      required: true
+    },
+    quantity: {
+      type: Number,
+      default: 1,
+      min: 0
+    },
+    acquiredAt: {
+      type: Date,
+      default: Date.now
+    },
+    // Optional extra data such as image, effects, etc.
+    imageUrl: String,
+    imageData: String,
+    imageAsset: String,
+    effects: {
+      type: Map,
+      of: mongoose.Schema.Types.Mixed,
+      default: {}
+    }
+  }],
   
   // Payment & Subscription
   stripeCustomerId: String,
