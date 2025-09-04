@@ -31,6 +31,7 @@ class NetworkService {
     this.onConnectionError = null;
     this.onRoomsUpdated = null; // New callback for room list updates
     this.onMatchFound = null; // Ranked/Casual matchmaking
+    this.onGameDeleted = null; // Game deleted event
   }
 
   // Initialize connection to server
@@ -187,6 +188,11 @@ class NetworkService {
         this.socket.on('gameEnded', (data) => {
           console.log('🏁 Game ended event received:', data);
           if (this.onGameEnd) this.onGameEnd(data);
+        });
+
+        this.socket.on('gameDeleted', (data) => {
+          console.log('🗑️ Game deleted event received:', data);
+          if (this.onGameDeleted) this.onGameDeleted(data);
         });
 
         this.socket.on('playerTyping', (data) => {
@@ -758,6 +764,85 @@ class NetworkService {
     this.leaveRoom(roomId);
     
     return true;
+  }
+
+  // Get list of my active games (waiting/playing/paused)
+  getMyGames() {
+    return new Promise((resolve, reject) => {
+      if (!this.socket || !this.socket.connected) {
+        reject(new Error('Not connected to server'));
+        return;
+      }
+      const timeout = setTimeout(() => reject(new Error('Request timed out')), 10000);
+      try {
+        this.socket.emit('getMyGames', {}, (response) => {
+          clearTimeout(timeout);
+          if (response && response.success) {
+            resolve(response.games || []);
+          } else {
+            reject(new Error(response?.error || 'Failed to get games'));
+          }
+        });
+      } catch (e) {
+        clearTimeout(timeout);
+        reject(e);
+      }
+    });
+  }
+
+  // Resume/join a game by roomId
+  joinGameRoom(roomId) {
+    return new Promise((resolve, reject) => {
+      if (!this.socket || !this.socket.connected) {
+        reject(new Error('Not connected to server'));
+        return;
+      }
+      const timeout = setTimeout(() => reject(new Error('Request timed out')), 10000);
+      try {
+        this.socket.emit('joinGameRoom', { roomId }, (response) => {
+          clearTimeout(timeout);
+          if (response && response.success) {
+            this.roomId = response.roomId;
+            this.notifyRoomsUpdated();
+            resolve(response);
+          } else {
+            reject(new Error(response?.error || 'Failed to join game'));
+          }
+        });
+      } catch (e) {
+        clearTimeout(timeout);
+        reject(e);
+      }
+    });
+  }
+
+  // Delete a game by roomId (allowed if permitted by server)
+  deleteGame(roomId) {
+    return new Promise((resolve, reject) => {
+      if (!this.socket || !this.socket.connected) {
+        reject(new Error('Not connected to server'));
+        return;
+      }
+      const timeout = setTimeout(() => reject(new Error('Request timed out')), 10000);
+      try {
+        this.socket.emit('deleteGame', { roomId }, (response) => {
+          clearTimeout(timeout);
+          if (response && response.success) {
+            // Clean local lists
+            this.hostedRooms = this.hostedRooms.filter(r => r.roomId !== roomId);
+            this.joinedRooms = this.joinedRooms.filter(r => r.roomId !== roomId);
+            if (this.roomId === roomId) this.roomId = null;
+            this.notifyRoomsUpdated();
+            resolve(true);
+          } else {
+            reject(new Error(response?.error || 'Failed to delete game'));
+          }
+        });
+      } catch (e) {
+        clearTimeout(timeout);
+        reject(e);
+      }
+    });
   }
 
   // Set current room (for game start)

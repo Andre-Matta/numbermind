@@ -13,6 +13,10 @@ const userIdToSocketId = new Map(); // userId -> socketId
 const gameRooms = new Map(); // roomId -> game data
 const matchmakingQueue = new Map(); // userId -> socket data
 const rankedQueue = new Map(); // userId -> { rating, socketId }
+// Track connected users per room (do not mutate DB players on disconnect)
+const roomConnectedUsers = new Map(); // roomId -> Set(userId)
+// Track ranked disconnect timers (per room per user)
+const rankedDisconnectTimers = new Map(); // roomId -> Map(userId -> timeoutId)
 
 const setupSocketIO = (server) => {
   io = socketIo(server, {
@@ -88,6 +92,8 @@ const setupSocketIO = (server) => {
         
         // Join the room
         socket.join(roomId);
+        // Mark user as connected in this room
+        markUserJoinedRoom(roomId, socket.userId);
         gameRooms.set(roomId, game);
         
         // Update user's ad counter
@@ -144,6 +150,7 @@ const setupSocketIO = (server) => {
         if (game.players.includes(socket.userId)) {
           // Player is already in room, just join the socket room
           socket.join(roomId);
+          markUserJoinedRoom(roomId, socket.userId);
           console.log(`✅ User ${socket.user.username} already in room ${roomId}, just joined socket room`);
           
           // If room is full and we're already in it, emit roomReady event
@@ -179,6 +186,7 @@ const setupSocketIO = (server) => {
 
         // Join the room
         socket.join(roomId);
+        markUserJoinedRoom(roomId, socket.userId);
         console.log(`🔌 Socket ${socket.id} joined room ${roomId}`);
         
         // Update user's ad counter
@@ -302,6 +310,116 @@ const setupSocketIO = (server) => {
         console.error('Error getting available rooms:', error);
         if (typeof callback === 'function') {
           callback({ success: false, error: 'Failed to get available rooms' });
+        }
+      }
+    });
+
+    // List "My Games" (active casual/private and any active ranked)
+    socket.on('getMyGames', async (data, callback) => {
+      try {
+        if (typeof callback !== 'function') return;
+        // Active = waiting/playing/paused
+        const games = await Game.find({
+          players: socket.userId,
+          gameState: { $in: ['waiting', 'playing', 'paused'] }
+        })
+          .sort({ updatedAt: -1 })
+          .select('-chat -replay.data');
+
+        callback({ success: true, games });
+      } catch (error) {
+        console.error('Error getting my games:', error);
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to get games' });
+        }
+      }
+    });
+
+    // Join a game room by roomId (resume)
+    socket.on('joinGameRoom', async (data, callback) => {
+      try {
+        if (typeof callback !== 'function') return;
+        const { roomId } = data || {};
+        if (!roomId) return callback({ success: false, error: 'Room ID is required' });
+
+        let game = gameRooms.get(roomId);
+        if (!game) {
+          // Load from DB
+          const dbGame = await Game.findOne({ roomId });
+          if (!dbGame) return callback({ success: false, error: 'Room not found' });
+          gameRooms.set(roomId, dbGame);
+          game = dbGame;
+        }
+
+        if (!game.players.map(p => p.toString()).includes(socket.userId)) {
+          return callback({ success: false, error: 'Not a player in this game' });
+        }
+
+        socket.join(roomId);
+        markUserJoinedRoom(roomId, socket.userId);
+
+        callback({ success: true, roomId, game: game.toObject() });
+
+        // If both are present and state is waiting, emit roomReady
+        const connectedSet = roomConnectedUsers.get(roomId) || new Set();
+        if (connectedSet.size === 2 && game.gameState === 'waiting') {
+          io.to(roomId).emit('roomReady', {
+            roomId,
+            players: game.players,
+            message: 'Room is full! Both players can now set up their secret numbers.'
+          });
+        }
+      } catch (error) {
+        console.error('Error joining game room:', error);
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to join room' });
+        }
+      }
+    });
+
+    // Delete a game (allowed for participants, only if not actively playing)
+    socket.on('deleteGame', async (data, callback) => {
+      try {
+        if (typeof callback !== 'function') return;
+        const { roomId } = data || {};
+        if (!roomId) return callback({ success: false, error: 'Room ID is required' });
+
+        const game = await Game.findOne({ roomId });
+        if (!game) return callback({ success: true }); // already gone
+
+        if (!game.players.map(p => p.toString()).includes(socket.userId)) {
+          return callback({ success: false, error: 'Not authorized' });
+        }
+
+        if (game.gameState === 'playing' && game.matchType !== 'ranked') {
+          return callback({ success: false, error: 'Cannot delete an active game' });
+        }
+
+        // Clean in-memory state
+        gameRooms.delete(roomId);
+        roomConnectedUsers.delete(roomId);
+        const timers = rankedDisconnectTimers.get(roomId);
+        if (timers) {
+          for (const t of timers.values()) clearTimeout(t);
+          rankedDisconnectTimers.delete(roomId);
+        }
+
+        await Game.deleteOne({ _id: game._id });
+        io.to(roomId).emit('gameDeleted', { roomId });
+        // Ensure sockets leave the room
+        const room = io.sockets.adapter.rooms.get(roomId);
+        if (room) {
+          for (const sid of Array.from(room)) {
+            io.sockets.sockets.get(sid)?.leave(roomId);
+          }
+        }
+
+        callback({ success: true });
+        console.log(`🗑️ Game deleted by user ${socket.userId}: ${roomId}`);
+      } catch (error) {
+        console.error('Error deleting game:', error);
+        if (typeof callback === 'function') {
+          callback({ success: false, error: 'Failed to delete game' });
         }
       }
     });
@@ -810,6 +928,12 @@ const setupSocketIO = (server) => {
           } catch (error) {
             console.error('Error sending game result notifications:', error);
           }
+          // After announcing winner, remove game from DB and memory
+          try {
+            await finalizeAndDeleteGame(roomId);
+          } catch (e) {
+            console.error('Error finalizing and deleting finished game:', e);
+          }
         }
 
         callback({ success: true, feedback });
@@ -865,29 +989,26 @@ const setupSocketIO = (server) => {
 
         const game = gameRooms.get(roomId);
         if (game) {
-          // Remove player from game
-          game.players = game.players.filter(p => p !== socket.userId);
+          // Mark user as left for connection tracking only
+          markUserLeftRoom(roomId, socket.userId);
           
-          if (game.players.length === 0) {
-            // Room is empty, delete it
-            gameRooms.delete(roomId);
-            await Game.findByIdAndDelete(game._id);
-            console.log(`🗑️ Room deleted: ${roomId}`);
+          // Ranked: if both left, delete immediately; if one left, start 60s forfeit timer
+          if (game.matchType === 'ranked') {
+            const connectedSet = roomConnectedUsers.get(roomId) || new Set();
+            if (connectedSet.size === 0) {
+              await finalizeAndDeleteGame(roomId);
+              console.log(`🗑️ Ranked room deleted (both left): ${roomId}`);
+            } else {
+              startRankedDisconnectTimer(roomId, socket.userId);
+              // Notify remaining players
+              socket.to(roomId).emit('playerDisconnected', {
+                playerId: socket.userId,
+                roomId,
+                gameState: game.gameState
+              });
+            }
           } else {
-            // Transfer host if needed
-            if (game.host === socket.userId) {
-              game.host = game.players[0];
-            }
-            
-            // End game if in progress
-            if (game.gameState === 'playing') {
-              game.gameState = 'abandoned';
-              game.endedAt = new Date();
-            }
-            
-            await game.save();
-            
-            // Notify remaining players
+            // Casual/private: keep game for resume; just notify
             socket.to(roomId).emit('playerDisconnected', {
               playerId: socket.userId,
               roomId,
@@ -1344,11 +1465,13 @@ const createMatch = async (player1Id, player2Id, gameMode, matchType) => {
     if (player1Socket) {
       player1Socket.emit('matchFound', { roomId, game: game.toObject() });
       player1Socket.join(roomId);
+      markUserJoinedRoom(roomId, player1Id);
     }
 
     if (player2Socket) {
       player2Socket.emit('matchFound', { roomId, game: game.toObject() });
       player2Socket.join(roomId);
+      markUserJoinedRoom(roomId, player2Id);
     }
 
     // Send push notifications to both players
@@ -1422,76 +1545,47 @@ const handlePlayerDisconnect = async (roomId, userId) => {
     const game = gameRooms.get(roomId);
     if (!game) return;
 
-    // Remove player from game
-    game.players = game.players.filter(p => p !== userId);
-    
-    if (game.players.length === 0) {
-      // Room is empty, delete it
-      gameRooms.delete(roomId);
-      try {
-        await Game.findByIdAndDelete(game._id);
-        console.log(`🗑️ Room deleted: ${roomId}`);
-      } catch (error) {
-        console.error('Error deleting game from database:', error);
-      }
-    } else {
-      // Transfer host if needed
-      if (game.host === userId) {
-        game.host = game.players[0];
-      }
-      
-      // End game if in progress
-      if (game.gameState === 'playing') {
-        game.gameState = 'abandoned';
-        game.endedAt = new Date();
-      }
-      
-      try {
-        // Use findByIdAndUpdate to avoid parallel save issues
-        await Game.findByIdAndUpdate(game._id, {
-          players: game.players,
-          host: game.host,
-          gameState: game.gameState,
-          endedAt: game.endedAt
-        });
-        
-        // Update the in-memory game object
-        game.players = game.players;
-        game.host = game.host;
-        game.gameState = game.gameState;
-        game.endedAt = game.endedAt;
-        
-      } catch (error) {
-        console.error('Error updating game state on disconnect:', error);
-      }
-      
-      // Notify remaining players
-      io.to(roomId).emit('playerDisconnected', {
-        playerId: userId,
-        roomId,
-        gameState: game.gameState
-      });
+    // Mark user left in connection tracker
+    markUserLeftRoom(roomId, userId);
 
-      // Send push notification to remaining players
-      try {
-        const disconnectedUser = await User.findById(userId).select('username');
-        if (disconnectedUser) {
-          await firebaseNotificationService.sendToUsers(
-            game.players,
-            'Player Disconnected 📡',
-            `${disconnectedUser.username} has left the game`,
-            {
-              type: 'player_disconnected',
-              roomId,
-              playerName: disconnectedUser.username,
-              playerId: userId,
-              gameState: game.gameState
-            }
-          );
-        }
-      } catch (error) {
-        console.error('Error sending player disconnected notification:', error);
+    // Ranked logic: if both left -> delete immediately; else start 60s forfeit timer
+    if (game.matchType === 'ranked') {
+      const connectedSet = roomConnectedUsers.get(roomId) || new Set();
+      if (connectedSet.size === 0) {
+        await finalizeAndDeleteGame(roomId);
+        console.log(`🗑️ Ranked room deleted (both left): ${roomId}`);
+        return;
       }
+      startRankedDisconnectTimer(roomId, userId);
+    }
+
+    // Notify remaining players (all modes)
+    io.to(roomId).emit('playerDisconnected', {
+      playerId: userId,
+      roomId,
+      gameState: game.gameState
+    });
+
+    // Push notification to remaining players
+    try {
+      const disconnectedUser = await User.findById(userId).select('username');
+      if (disconnectedUser) {
+        const connectedSet = roomConnectedUsers.get(roomId) || new Set();
+        await firebaseNotificationService.sendToUsers(
+          Array.from(connectedSet),
+          'Player Disconnected 📡',
+          `${disconnectedUser.username} has left the game`,
+          {
+            type: 'player_disconnected',
+            roomId,
+            playerName: disconnectedUser.username,
+            playerId: userId,
+            gameState: game.gameState
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Error sending player disconnected notification:', error);
     }
   } catch (error) {
     console.error('Error in handlePlayerDisconnect:', error);
@@ -1556,3 +1650,124 @@ module.exports = {
   getServerStats,
   io: () => io
 };
+
+// --- Helper utilities for connection tracking and ranked rules ---
+function ensureConnectedSet(roomId) {
+  if (!roomConnectedUsers.has(roomId)) {
+    roomConnectedUsers.set(roomId, new Set());
+  }
+  return roomConnectedUsers.get(roomId);
+}
+
+function markUserJoinedRoom(roomId, userId) {
+  const set = ensureConnectedSet(roomId);
+  set.add(userId.toString());
+  // Clear any pending ranked timer for this user
+  const timers = rankedDisconnectTimers.get(roomId);
+  if (timers && timers.has(userId.toString())) {
+    clearTimeout(timers.get(userId.toString()));
+    timers.delete(userId.toString());
+  }
+}
+
+function markUserLeftRoom(roomId, userId) {
+  const set = ensureConnectedSet(roomId);
+  set.delete(userId.toString());
+}
+
+function startRankedDisconnectTimer(roomId, disconnectedUserId) {
+  const game = gameRooms.get(roomId);
+  if (!game || game.matchType !== 'ranked') return;
+  if (!rankedDisconnectTimers.has(roomId)) {
+    rankedDisconnectTimers.set(roomId, new Map());
+  }
+  const timers = rankedDisconnectTimers.get(roomId);
+  const key = disconnectedUserId.toString();
+  // Avoid duplicate timers
+  if (timers.has(key)) return;
+
+  const timeoutMs = 60 * 1000;
+  const opponentId = game.players.find(p => p.toString() !== key)?.toString();
+  const timeoutId = setTimeout(async () => {
+    try {
+      // If both left, delete without winner
+      const connectedSet = roomConnectedUsers.get(roomId) || new Set();
+      if (connectedSet.size === 0) {
+        await finalizeAndDeleteGame(roomId);
+        console.log(`🗑️ Ranked room deleted after timeout (both left): ${roomId}`);
+        return;
+      }
+      // If still disconnected, forfeit to opponent
+      const stillDisconnected = !(connectedSet.has(key));
+      if (stillDisconnected && opponentId) {
+        await forfeitRankedGame(roomId, opponentId);
+        console.log(`🏳️ Ranked forfeit: ${key} forfeited to ${opponentId} in ${roomId}`);
+      }
+    } catch (e) {
+      console.error('Error handling ranked disconnect timeout:', e);
+    } finally {
+      // Clear timer entry
+      const t = rankedDisconnectTimers.get(roomId);
+      if (t) t.delete(key);
+    }
+  }, timeoutMs);
+
+  timers.set(key, timeoutId);
+}
+
+async function forfeitRankedGame(roomId, winnerId) {
+  const game = gameRooms.get(roomId);
+  if (!game) return;
+  game.gameState = 'finished';
+  game.winner = winnerId;
+  game.endedAt = new Date();
+  try {
+    await Game.findByIdAndUpdate(game._id, {
+      gameState: game.gameState,
+      winner: game.winner,
+      endedAt: game.endedAt
+    });
+    await updateGameStats(game);
+  } catch (e) {
+    console.error('Error saving ranked forfeit result:', e);
+  }
+
+  io.to(roomId).emit('gameEnded', {
+    roomId,
+    winner: winnerId,
+    game: game.toObject()
+  });
+
+  await finalizeAndDeleteGame(roomId);
+}
+
+async function finalizeAndDeleteGame(roomId) {
+  try {
+    const game = gameRooms.get(roomId);
+    if (game) {
+      // Clean timers
+      const timers = rankedDisconnectTimers.get(roomId);
+      if (timers) {
+        for (const timeoutId of timers.values()) clearTimeout(timeoutId);
+        rankedDisconnectTimers.delete(roomId);
+      }
+      // Remove from memory
+      gameRooms.delete(roomId);
+      roomConnectedUsers.delete(roomId);
+      // Delete from DB
+      await Game.findByIdAndDelete(game._id);
+    } else {
+      // Fallback: delete by roomId
+      await Game.deleteOne({ roomId });
+    }
+  } catch (e) {
+    console.error('Error deleting game from DB:', e);
+  }
+}
+
+// --- Additional socket events for My Games and resuming ---
+// Extend setupSocketIO exports by augmenting io handlers after declaration
+// Note: Placed at end of file for clarity
+
+// Monkey-patch: once io is ready, add listeners for getMyGames, joinGameRoom, deleteGame
+// These run in the same connection handler above; kept here as helpers if needed elsewhere
