@@ -378,6 +378,34 @@ const setupSocketIO = (server) => {
 
         callback({ success: true, roomId, game: game.toObject() });
 
+        // If both numbers already submitted and game not marked playing, auto-start
+        try {
+          const numbersCount = (game.playerNumbers && typeof game.playerNumbers.size === 'number')
+            ? game.playerNumbers.size
+            : (game.playerNumbers ? new Map(Object.entries(game.playerNumbers)).size : 0);
+          if (numbersCount === 2 && game.gameState !== 'playing') {
+            game.gameState = 'playing';
+            if (!game.currentTurn) {
+              game.currentTurn = game.players[0];
+            }
+            if (!game.startedAt) {
+              game.startedAt = new Date();
+            }
+            await Game.findByIdAndUpdate(game._id, {
+              gameState: game.gameState,
+              currentTurn: game.currentTurn,
+              startedAt: game.startedAt
+            });
+            io.to(roomId).emit('gameStarted', {
+              roomId,
+              currentTurn: game.currentTurn ? game.currentTurn.toString() : game.currentTurn,
+              gameMode: game.gameMode
+            });
+          }
+        } catch (err) {
+          console.error('Error auto-starting resumed game:', err);
+        }
+
         // If both are present and state is waiting, emit roomReady
         const connectedSet = roomConnectedUsers.get(roomId) || new Set();
         if (connectedSet.size === 2 && game.gameState === 'waiting') {
