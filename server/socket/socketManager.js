@@ -9,6 +9,7 @@ let io;
 
 // Store active connections and game rooms
 const activeConnections = new Map(); // socketId -> userId
+const userIdToSocketId = new Map(); // userId -> socketId
 const gameRooms = new Map(); // roomId -> game data
 const matchmakingQueue = new Map(); // userId -> socket data
 const rankedQueue = new Map(); // userId -> { rating, socketId }
@@ -53,6 +54,7 @@ const setupSocketIO = (server) => {
     
     // Store connection
     activeConnections.set(socket.id, socket.userId);
+    userIdToSocketId.set(socket.userId, socket.id);
     
     // Update user's online status
     updateUserStatus(socket.userId, true);
@@ -1185,6 +1187,7 @@ const setupSocketIO = (server) => {
       
       // Remove from active connections
       activeConnections.delete(socket.id);
+      userIdToSocketId.delete(socket.userId);
       
       // Remove from queues
       matchmakingQueue.delete(socket.userId);
@@ -1319,8 +1322,10 @@ const createMatch = async (player1Id, player2Id, gameMode, matchType) => {
     rankedQueue.delete(player2Id);
 
     // Notify both players
-    const player1Socket = io.sockets.sockets.get(activeConnections.get(player1Id));
-    const player2Socket = io.sockets.sockets.get(activeConnections.get(player2Id));
+    const player1SocketId = userIdToSocketId.get(player1Id);
+    const player2SocketId = userIdToSocketId.get(player2Id);
+    const player1Socket = player1SocketId ? io.sockets.sockets.get(player1SocketId) : null;
+    const player2Socket = player2SocketId ? io.sockets.sockets.get(player2SocketId) : null;
 
     if (player1Socket) {
       player1Socket.emit('matchFound', { roomId, game: game.toObject() });
