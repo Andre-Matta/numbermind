@@ -1268,19 +1268,33 @@ const findRankedMatch = (userId, gameMode) => {
   const player = rankedQueue.get(userId);
   if (!player) return;
 
-  // Find opponent with similar rating (±100 points)
+  const now = Date.now();
+  const waitSeconds = Math.floor((now - (player.timestamp || now)) / 1000);
+  // Base ±100, expand by ±50 every 10s, cap at ±600
+  const dynamicThreshold = Math.min(100 + Math.floor(waitSeconds / 10) * 50, 600);
+
   for (const [opponentId, opponent] of rankedQueue.entries()) {
     if (opponentId === userId) continue;
     if (opponent.gameMode !== gameMode) continue;
-    
+
     const ratingDiff = Math.abs(player.rating - opponent.rating);
-    if (ratingDiff <= 100) {
-      // Create match
+    if (ratingDiff <= dynamicThreshold) {
       createMatch(userId, opponentId, gameMode, 'ranked');
       return;
     }
   }
 };
+
+// Periodic sweep to attempt matches as thresholds expand
+setInterval(() => {
+  try {
+    for (const [userId, player] of rankedQueue.entries()) {
+      findRankedMatch(userId, player.gameMode);
+    }
+  } catch (e) {
+    console.error('Error during ranked sweep:', e);
+  }
+}, 3000);
 
 const findCasualMatch = (userId, gameMode) => {
   const player = matchmakingQueue.get(userId);

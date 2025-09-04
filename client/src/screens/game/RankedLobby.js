@@ -11,23 +11,40 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import NetworkService from '../../services/NetworkService';
+import { useAuth } from '../../context/AuthContext';
 
 
 export default function RankedLobby({ onBack, onGameStart }) {
+  const { user } = useAuth();
   const [isSearching, setIsSearching] = useState(false);
   const [searchTime, setSearchTime] = useState(0);
-  const [playerStats, setPlayerStats] = useState({
-    rank: 'Gold',
-    rating: 1250,
-    gamesPlayed: 47,
-    winRate: 68,
-  });
+  
+  // Derived stats from authenticated user
+  const rank = user?.gameStats?.rank || 'Bronze';
+  const rating = typeof user?.gameStats?.rating === 'number' ? user.gameStats.rating : 1000;
+  const gamesPlayed = typeof user?.gameStats?.gamesPlayed === 'number' ? user.gameStats.gamesPlayed : 0;
+  const gamesWon = typeof user?.gameStats?.gamesWon === 'number' ? user.gameStats.gamesWon : 0;
+  const winRate = typeof user?.gameStats?.winRate === 'number'
+    ? user.gameStats.winRate
+    : (gamesPlayed ? Math.round((gamesWon / gamesPlayed) * 100) : 0);
 
-  const [opponents, setOpponents] = useState([
-    { id: 1, name: 'Player456', rank: 'Gold', rating: 1280, status: 'searching' },
-    { id: 2, name: 'MasterCoder', rank: 'Platinum', rating: 1350, status: 'searching' },
-    { id: 3, name: 'NumberNinja', rank: 'Gold', rating: 1220, status: 'searching' },
-  ]);
+  // Listen for matchFound from server
+  useEffect(() => {
+    const handleMatchFound = (data) => {
+      setIsSearching(false);
+      if (data?.roomId && onGameStart) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        onGameStart(data.roomId, 'internet');
+      }
+    };
+
+    NetworkService.onMatchFound = handleMatchFound;
+    return () => {
+      NetworkService.onMatchFound = null;
+      NetworkService.leaveQueue().catch(() => {});
+    };
+  }, [onGameStart]);
 
   useEffect(() => {
     let interval;
@@ -39,55 +56,28 @@ export default function RankedLobby({ onBack, onGameStart }) {
     return () => clearInterval(interval);
   }, [isSearching]);
 
-  const startSearching = () => {
-    setIsSearching(true);
-    setSearchTime(0);
+  const startSearching = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
-    // Simulate finding opponent after random time
-    setTimeout(() => {
-      if (isSearching) {
-        findOpponent();
+    try {
+      if (!NetworkService.isConnected()) {
+        await NetworkService.connect();
       }
-    }, Math.random() * 10000 + 5000); // 5-15 seconds
+      setIsSearching(true);
+      setSearchTime(0);
+      await NetworkService.joinRankedQueue('standard');
+    } catch (e) {
+      setIsSearching(false);
+    }
   };
 
-  const stopSearching = () => {
+  const stopSearching = async () => {
     setIsSearching(false);
     setSearchTime(0);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try { await NetworkService.leaveQueue(); } catch (e) {}
   };
 
-  const findOpponent = () => {
-    const randomOpponent = opponents[Math.floor(Math.random() * opponents.length)];
-    setIsSearching(false);
-    
-    Alert.alert(
-      'Opponent Found!',
-      `Matched with ${randomOpponent.name} (${randomOpponent.rank})`,
-      [
-        {
-          text: 'Decline',
-          style: 'cancel',
-          onPress: () => {
-            // Continue searching
-            setTimeout(() => startSearching(), 1000);
-          }
-        },
-        {
-          text: 'Accept',
-          onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            onGameStart({
-              isRanked: true,
-              opponent: randomOpponent,
-              playerStats: playerStats,
-            });
-          }
-        }
-      ]
-    );
-  };
+  // Server handles matching; no local simulation
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -126,16 +116,16 @@ export default function RankedLobby({ onBack, onGameStart }) {
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>Your Rank</Text>
             <View style={styles.rankDisplay}>
-              <View style={[styles.rankDot, { backgroundColor: getRankColor(playerStats.rank) }]} />
-              <Text style={styles.rankText}>{playerStats.rank}</Text>
+              <View style={[styles.rankDot, { backgroundColor: getRankColor(rank) }]} />
+              <Text style={styles.rankText}>{rank}</Text>
             </View>
-            <Text style={styles.ratingText}>{playerStats.rating} Rating</Text>
+            <Text style={styles.ratingText}>{rating} Rating</Text>
           </View>
           
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>Win Rate</Text>
-            <Text style={styles.statValue}>{playerStats.winRate}%</Text>
-            <Text style={styles.statSubtext}>{playerStats.gamesPlayed} games</Text>
+            <Text style={styles.statValue}>{winRate}%</Text>
+            <Text style={styles.statSubtext}>{gamesPlayed} games</Text>
           </View>
         </View>
 
@@ -167,34 +157,7 @@ export default function RankedLobby({ onBack, onGameStart }) {
           )}
         </View>
 
-        {/* Available Opponents */}
-        <View style={styles.opponentsSection}>
-          <Text style={styles.sectionTitle}>Available Opponents</Text>
-          <ScrollView style={styles.opponentsList} showsVerticalScrollIndicator={false}>
-            {opponents.map((opponent) => (
-              <View key={opponent.id} style={styles.opponentCard}>
-                <View style={styles.opponentInfo}>
-                  <View style={styles.opponentAvatar}>
-                    <Ionicons name="person" size={24} color="#fff" />
-                  </View>
-                  <View style={styles.opponentDetails}>
-                    <Text style={styles.opponentName}>{opponent.name}</Text>
-                    <View style={styles.opponentRank}>
-                      <View style={[styles.rankDot, { backgroundColor: getRankColor(opponent.rank) }]} />
-                      <Text style={styles.opponentRankText}>{opponent.rank}</Text>
-                      <Text style={styles.opponentRating}>{opponent.rating} Rating</Text>
-                    </View>
-                  </View>
-                </View>
-                
-                <View style={styles.opponentStatus}>
-                  <View style={[styles.statusDot, { backgroundColor: '#4ecdc4' }]} />
-                  <Text style={styles.statusText}>Available</Text>
-                </View>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
+        {/* Available Opponents removed */}
 
         {/* Quick Play Options */}
         <View style={styles.quickPlaySection}>

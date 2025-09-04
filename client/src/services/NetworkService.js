@@ -30,6 +30,7 @@ class NetworkService {
     this.onRoomReady = null;
     this.onConnectionError = null;
     this.onRoomsUpdated = null; // New callback for room list updates
+    this.onMatchFound = null; // Ranked/Casual matchmaking
   }
 
   // Initialize connection to server
@@ -155,6 +156,19 @@ class NetworkService {
           if (this.onGameStart) this.onGameStart(data);
         });
 
+        // Matchmaking event handlers
+        this.socket.on('matchFound', (data) => {
+          console.log('🎯 Match found event received:', data);
+          try {
+            if (data?.roomId) {
+              this.roomId = data.roomId;
+            }
+          } catch (e) {
+            console.error('Error handling matchFound event:', e);
+          }
+          if (this.onMatchFound) this.onMatchFound(data);
+        });
+
         this.socket.on('playerJoined', (data) => {
           console.log('👥 Player joined event received:', data);
           if (this.onPlayerJoined) this.onPlayerJoined(data);
@@ -260,6 +274,62 @@ class NetworkService {
       } catch (error) {
         clearTimeout(timeout);
         reject(error);
+      }
+    });
+  }
+
+  // Join ranked matchmaking queue
+  joinRankedQueue(gameMode = 'standard') {
+    return new Promise((resolve, reject) => {
+      if (!this.socket || !this.socket.connected) {
+        reject(new Error('Not connected to server'));
+        return;
+      }
+
+      const timeout = setTimeout(() => {
+        reject(new Error('Request timed out'));
+      }, 10000);
+
+      try {
+        this.socket.emit('joinRankedQueue', { gameMode }, (response) => {
+          clearTimeout(timeout);
+          if (response && response.success) {
+            resolve(response);
+          } else {
+            reject(new Error(response?.error || 'Failed to join ranked queue'));
+          }
+        });
+      } catch (error) {
+        clearTimeout(timeout);
+        reject(error);
+      }
+    });
+  }
+
+  // Leave any matchmaking queue
+  leaveQueue() {
+    return new Promise((resolve, reject) => {
+      if (!this.socket || !this.socket.connected) {
+        resolve(true); // Nothing to do
+        return;
+      }
+
+      const timeout = setTimeout(() => {
+        resolve(false);
+      }, 5000);
+
+      try {
+        this.socket.emit('leaveQueue', (response) => {
+          clearTimeout(timeout);
+          if (response && response.success) {
+            resolve(true);
+          } else {
+            resolve(false);
+          }
+        });
+      } catch (error) {
+        clearTimeout(timeout);
+        resolve(false);
       }
     });
   }

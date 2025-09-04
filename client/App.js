@@ -7,6 +7,7 @@ import { DataProvider, useData } from './src/context/DataContext';
 
 //core imports
 import LoadingScreen from './src/screens/core/LoadingScreen';
+import OfflineModeScreen from './src/screens/core/OfflineModeScreen';
 import LoginScreen from './src/screens/core/LoginScreen';
 import EnhancedMainMenu from './src/screens/core/EnhancedMainMenu';
 import MultiplayerSelectionScreen from './src/screens/core/MultiplayerSelectionScreen';
@@ -106,6 +107,9 @@ function AppContent() {
         onNavigateToLogin={() => {
           // This will be called if user is not authenticated
           setCurrentScreen('login');
+        }}
+        onNavigateToOffline={() => {
+          setCurrentScreen('offlineMode');
         }}
       />
     );
@@ -208,6 +212,9 @@ function AppContent() {
           setCurrentScreen('internetMultiplayer');
         }
         break;
+      case 'offlineMode':
+        setCurrentScreen('menu');
+        break;
       case 'login':
         setCurrentScreen('menu');
         break;
@@ -228,11 +235,22 @@ function AppContent() {
             onNavigateToLogin={() => {
               setCurrentScreen('login');
             }}
+            onNavigateToOffline={() => {
+              setCurrentScreen('offlineMode');
+            }}
           />
         );
       case 'login':
         return (
           <LoginScreen 
+            onBack={() => setCurrentScreen('menu')}
+          />
+        );
+      case 'offlineMode':
+        return (
+          <OfflineModeScreen
+            onLocalGame={handleLocalGame}
+            onLANMultiplayer={handleLANMultiplayer}
             onBack={() => setCurrentScreen('menu')}
           />
         );
@@ -311,6 +329,7 @@ function AppContent() {
         return (
           <RankedLobby
             onBack={handleBackToMenu}
+            onGameStart={handleMultiplayerGameStart}
           />
         );
 

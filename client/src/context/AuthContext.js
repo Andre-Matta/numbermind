@@ -31,6 +31,16 @@ export const AuthProvider = ({ children }) => {
         const currentUser = AuthService.getCurrentUser();
         setUser(currentUser);
         setIsAuthenticated(true);
+
+        // Ensure freshest data: refresh full profile from the server on startup
+        try {
+          const result = await AuthService.refreshUserData();
+          if (result.success && result.data) {
+            setUser(result.data);
+          }
+        } catch (refreshError) {
+          console.error('Startup profile refresh failed:', refreshError);
+        }
       }
     } catch (error) {
       console.error('Auth initialization error:', error);

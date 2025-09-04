@@ -6,6 +6,7 @@ import {
   Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import NetInfo from '@react-native-community/netinfo';
 import config from '../../config/config';
 import AuthService from '../../services/AuthService';
 import { useData } from '../../context/DataContext';
@@ -22,7 +23,7 @@ import {
   getScreenDimensions
 } from '../../utils/responsiveUtils';
 
-export default function LoadingScreen({ onLoadingComplete, onNavigateToLogin }) {
+export default function LoadingScreen({ onLoadingComplete, onNavigateToLogin, onNavigateToOffline }) {
   const { setAppData } = useData();
   const [loadingSteps, setLoadingSteps] = useState([
     { name: 'Checking Authentication', completed: false },
@@ -68,18 +69,40 @@ export default function LoadingScreen({ onLoadingComplete, onNavigateToLogin }) 
   const timeoutRefs = useRef([]);
   const animationRefs = useRef([]);
 
+  const navigatedRef = useRef(false);
+
   useEffect(() => {
-    startLoadingSequence();
-    
-    // Add a global timeout to prevent the loading screen from getting stuck
-    const globalTimeout = setTimeout(() => {
-      console.log('Global timeout reached, forcing navigation to login');
-      onNavigateToLogin();
-    }, 30000); // 30 second global timeout
+    let globalTimeout;
+    const init = async () => {
+      try {
+        const state = await NetInfo.fetch();
+        const offline = (state.isConnected === false) || (state.isInternetReachable === false);
+        if (offline && onNavigateToOffline && !navigatedRef.current) {
+          navigatedRef.current = true;
+          console.log('No internet detected on loading, navigating to offline mode');
+          onNavigateToOffline();
+          return;
+        }
+      } catch (e) {
+        // If NetInfo fails, proceed with normal flow
+      }
+
+      startLoadingSequence();
+
+      // Add a global timeout to prevent the loading screen from getting stuck
+      globalTimeout = setTimeout(() => {
+        if (!navigatedRef.current) {
+          console.log('Global timeout reached, forcing navigation to login');
+          onNavigateToLogin();
+        }
+      }, 30000); // 30 second global timeout
+    };
+
+    init();
     
     // Cleanup function to clear timeouts and stop animations
     return () => {
-      clearTimeout(globalTimeout);
+      if (globalTimeout) clearTimeout(globalTimeout);
       timeoutRefs.current.forEach(ref => clearTimeout(ref));
       animationRefs.current.forEach(ref => {
         if (ref && ref.stop) ref.stop();
