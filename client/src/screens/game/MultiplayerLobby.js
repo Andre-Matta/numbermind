@@ -21,6 +21,7 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [availableRooms, setAvailableRooms] = useState([]);
+  const [myGames, setMyGames] = useState([]);
   const [hostedRoomSettings, setHostedRoomSettings] = useState({}); // roomId -> { mode, timer }
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [mpMode, setMpMode] = useState('standard');
@@ -71,6 +72,8 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
       
       // Initial room refresh
       await refreshInternetRooms();
+      // Load user's active games
+      await refreshMyGames();
     } catch (error) {
       setConnectionStatus(NetworkService.getConnectionStatus());
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -248,6 +251,16 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
     }
   };
 
+  const refreshMyGames = async () => {
+    if (!NetworkService.isConnected()) return;
+    try {
+      const games = await NetworkService.getMyGames();
+      setMyGames(games || []);
+    } catch (e) {
+      console.log('Failed to load my games:', e?.message || e);
+    }
+  };
+
   const handleDeleteRoom = async (roomIdToDelete) => {
     // Security check: Only allow deleting rooms you're hosting
     const hostedRooms = NetworkService.getHostedRooms();
@@ -288,6 +301,17 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
         }
       ]
     );
+  };
+
+  const resumeGame = async (targetRoomId) => {
+    try {
+      if (!targetRoomId) return;
+      await NetworkService.joinGameRoom(targetRoomId);
+      setRoomId(targetRoomId);
+      onGameStart(targetRoomId);
+    } catch (e) {
+      Alert.alert('Resume Failed', e?.message || 'Unable to resume game');
+    }
   };
 
   const getStatusColor = () => {
@@ -392,8 +416,49 @@ export default function MultiplayerLobby({ onGameStart, onBack }) {
                 <Text style={styles.buttonText}>Refresh Rooms</Text>
               </TouchableOpacity>
             </View>
+            {/* My Games Section */}
+            <View style={styles.lanRoomsContainer}>
+              <Text style={styles.lanRoomsTitle}>Your Active Games:</Text>
+              {myGames.length > 0 ? (
+                <ScrollView style={styles.roomsList}>
+                  {myGames.map((g, idx) => (
+                    <View key={`my-${idx}`} style={styles.roomItemContainer}>
+                      <TouchableOpacity
+                        style={[styles.roomItem]}
+                        onPress={() => resumeGame(g.roomId)}
+                      >
+                        <Text style={styles.roomIdText}>Room: {g.roomId}</Text>
+                        <Text style={styles.roomHostText}>Type: {g.matchType || 'casual'} | Mode: {g.gameMode || 'standard'}</Text>
+                        <Text style={styles.roomPlayersText}>State: {g.gameState} | Players: {(g.players?.length || 0)}/2</Text>
+                        <Text style={styles.roomJoinText}>Tap to resume</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.deleteRoomButton}
+                        onPress={async () => {
+                          try {
+                            await NetworkService.deleteGame(g.roomId);
+                            setMyGames(prev => prev.filter(x => x.roomId !== g.roomId));
+                          } catch (e) {
+                            Alert.alert('Error', e?.message || 'Failed to delete game');
+                          }
+                        }}
+                      >
+                        <Ionicons name="trash-outline" size={20} color="#dc3545" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </ScrollView>
+              ) : (
+                <Text style={styles.noRoomsText}>No active games. Create a room to start!</Text>
+              )}
+              <View style={styles.buttonRow}>
+                <TouchableOpacity style={[styles.button, styles.refreshButton]} onPress={refreshMyGames}>
+                  <Text style={styles.buttonText}>Refresh My Games</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
              
-                         {/* Available Internet Rooms */}
+             {/* Available Internet Rooms */}
              <View style={styles.lanRoomsContainer}>
                <Text style={styles.lanRoomsTitle}>Available Internet Rooms:</Text>
                

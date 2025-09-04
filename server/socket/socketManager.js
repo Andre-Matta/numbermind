@@ -74,6 +74,21 @@ const setupSocketIO = (server) => {
           console.error('createPrivateRoom: callback is not a function');
           return;
         }
+        // Idempotency: if user already has a waiting private room, return it
+        const existing = await Game.findOne({
+          host: socket.userId,
+          isPrivate: true,
+          gameState: 'waiting',
+          players: { $size: 1 }
+        });
+        if (existing) {
+          const roomId = existing.roomId;
+          console.log(`♻️ Returning existing private room ${roomId} for user ${socket.user.username}`);
+          socket.join(roomId);
+          markUserJoinedRoom(roomId, socket.userId);
+          gameRooms.set(roomId, existing);
+          return callback({ success: true, roomId, game: existing.toObject(), reused: true });
+        }
 
         const roomId = generateRoomId();
         console.log(`🏠 Creating private room ${roomId} for user ${socket.user.username} (${socket.userId})`);
@@ -147,7 +162,7 @@ const setupSocketIO = (server) => {
         }
 
         // Check if player is already in the room
-        if (game.players.includes(socket.userId)) {
+        if (game.players.map(p => p.toString()).includes(socket.userId.toString())) {
           // Player is already in room, just join the socket room
           socket.join(roomId);
           markUserJoinedRoom(roomId, socket.userId);
@@ -180,8 +195,11 @@ const setupSocketIO = (server) => {
           return callback({ success: false, error: 'Room is full' });
         }
 
-        // Add player to game
-        game.players.push(socket.userId);
+        // Add player to game if not already present
+        const hasPlayer = game.players.map(p => p.toString()).includes(socket.userId.toString());
+        if (!hasPlayer) {
+          game.players.push(socket.userId);
+        }
         await game.save();
 
         // Join the room
@@ -535,7 +553,7 @@ const setupSocketIO = (server) => {
           return callback({ success: false, error: 'Room not found' });
         }
 
-        if (!game.players.includes(socket.userId)) {
+        if (!game.players.map(p => p.toString()).includes(socket.userId.toString())) {
           return callback({ success: false, error: 'Not in this room' });
         }
 
@@ -647,7 +665,7 @@ const setupSocketIO = (server) => {
           return callback({ success: false, error: 'Room not found' });
         }
 
-        if (!game.players.includes(socket.userId)) {
+        if (!game.players.map(p => p.toString()).includes(socket.userId.toString())) {
           return callback({ success: false, error: 'Not in this room' });
         }
 
